@@ -1,0 +1,54 @@
+<%- include('../../partials/head') %>
+
+    <header>
+        <div>
+            <h1>Central de NF-e</h1>
+            <p>Preparação, validação, assinatura, envio e acompanhamento.</p>
+        </div>
+    </header>
+
+    <section class="card">
+        <table class="rm-data-grid">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Movimento</th>
+                    <th>Destinatário</th>
+                    <th>Valor</th>
+                    <th>Status</th>
+                    <th>Chave</th>
+                    <th>Protocolo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% movements.forEach(m=> { %>
+                    <tr>
+                        <td>
+                            <%= m.type_code %>
+                        </td>
+                        <td>
+                            <a href="/stock-management/nfe/<%= m.id %>">
+                                <%= m.number %>
+                            </a>
+                        </td>
+                        <td>
+                            <%= m.corporate_name %>
+                        </td>
+                        <td>R$ <%= Number(m.total).toFixed(2) %>
+                        </td>
+                        <td>
+                            <%= m.nfe_status %>
+                        </td>
+                        <td>
+                            <%= m.nfe_key || '-' %>
+                        </td>
+                        <td>
+                            <%= m.nfe_protocol || '-' %>
+                        </td>
+                    </tr>
+                    <% }) %>
+            </tbody>
+        </table>
+    </section>
+
+    <%- include('../../partials/foot') %>

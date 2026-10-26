@@ -1,0 +1,304 @@
+/* =========================================================
+   CRM Técnico
+   Estilos gerais
+   ========================================================= */
+
+.crm-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.crm-tabs a {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e293b;
+  text-decoration: none;
+}
+
+.crm-tabs a:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.notification-rule {
+  padding: 12px 0;
+}
+
+.notification-rule h2 {
+  font-size: 1rem;
+}
+
+.card article {
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.card article:last-child {
+  border-bottom: 0;
+}
+
+
+/* =========================================================
+   Abas do chamado
+   ========================================================= */
+
+.crm-ticket-tabs {
+  margin-top: 18px;
+}
+
+.crm-tab-list {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  padding: 0 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid #cbd5e1;
+  scrollbar-width: thin;
+}
+
+.crm-tab-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.crm-tab-button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.crm-tab-button.active {
+  position: relative;
+  z-index: 1;
+  margin-bottom: -1px;
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #0f4c81;
+  font-weight: 700;
+}
+
+.crm-tab-button.active::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: #0f6cbd;
+  content: "";
+}
+
+.crm-tab-button:focus-visible {
+  outline: 3px solid rgb(15 108 189 / 25%);
+  outline-offset: 2px;
+}
+
+.crm-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: #0f6cbd;
+  font-size: 15px;
+}
+
+.crm-tab-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.crm-tab-button.active .crm-tab-counter {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+
+/* =========================================================
+   Painéis das abas
+   ========================================================= */
+
+.crm-tab-panel {
+  padding: 22px;
+  border: 1px solid #cbd5e1;
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  background: #ffffff;
+}
+
+.crm-tab-panel[hidden] {
+  display: none !important;
+}
+
+.crm-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.crm-panel-header h2 {
+  margin: 0;
+}
+
+.crm-panel-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+}
+
+.crm-tab-form {
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+
+/* =========================================================
+   Linha do tempo de mensagens
+   ========================================================= */
+
+.crm-timeline {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.crm-timeline-item {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.crm-timeline-item:last-child {
+  border-bottom: 0;
+}
+
+.crm-timeline-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.crm-timeline-item.internal .crm-timeline-marker {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.crm-timeline-content {
+  min-width: 0;
+}
+
+.crm-timeline-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.crm-timeline-heading time {
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.crm-message-text {
+  margin-bottom: 8px;
+  color: #1e293b;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+
+/* =========================================================
+   Histórico de repasses
+   ========================================================= */
+
+.crm-history {
+  margin-top: 24px;
+}
+
+.crm-history-item {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.crm-history-item:last-child {
+  border-bottom: 0;
+}
+
+.crm-history-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+
+/* =========================================================
+   Responsividade
+   ========================================================= */
+
+@media (max-width: 760px) {
+  .crm-tab-list {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .crm-tab-button {
+    flex: 0 0 auto;
+  }
+
+  .crm-tab-panel {
+    padding: 16px;
+  }
+
+  .crm-panel-header {
+    flex-direction: column;
+  }
+
+  .crm-timeline-heading {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

@@ -1,0 +1,113 @@
+<%- include('../../partials/head') %>
+
+    <header>
+        <div>
+            <span class="module">
+                <%= movement.type_code %> · <%= movement.type_name %>
+            </span>
+            <h1>NF-e do movimento <%= movement.number %>
+            </h1>
+            <p>
+                <%= movement.corporate_name %> ·
+                    <span class="badge badge-<%= (movement.nfe_status || 'pendente').toLowerCase() %>">
+                        <%= movement.nfe_status %>
+                    </span>
+            </p>
+        </div>
+
+        <% if (!['AUTORIZADA', 'CANCELADA' ].includes(movement.nfe_status)) { %>
+            <form method="post" action="/stock-management/nfe/<%= movement.id %>/send"
+                onsubmit="this.querySelector('button').disabled = true;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button>Validar, assinar e enviar</button>
+            </form>
+            <% } %>
+    </header>
+
+    <section class="metrics">
+        <div class="card">
+            Valor<br>
+            <b>
+                <%= Number(movement.total).toLocaleString('pt-BR', { style: 'currency' , currency: 'BRL' }) %>
+            </b>
+        </div>
+        <div class="card">
+            Chave<br>
+            <b class="mono">
+                <%= (movement.nfe_key || '' ).replace(/(\d{4})(?=\d)/g, '$1 ' ) || '-' %>
+            </b>
+        </div>
+        <div class="card">
+            Protocolo<br>
+            <b class="mono">
+                <%= movement.nfe_protocol || '-' %>
+            </b>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Etapas de transmissão</h2>
+        <ol>
+            <li>Validar cadastro e itens</li>
+            <li>Gerar XML NF-e 4.00</li>
+            <li>Validar schema oficial vigente</li>
+            <li>Assinar com certificado digital</li>
+            <li>Transmitir ao autorizador da SEFAZ</li>
+            <li>Persistir XML, recibo, protocolo e retorno</li>
+        </ol>
+    </section>
+
+    <section class="card">
+        <h2>Histórico</h2>
+        <table class="rm-data-grid">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Operação</th>
+                    <th>Ambiente</th>
+                    <th>Status</th>
+                    <th>Protocolo</th>
+                    <th>Erro</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (!transmissions.length) { %>
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            Nenhuma transmissão registrada.
+                        </td>
+                    </tr>
+                    <% } else { %>
+                        <% transmissions.forEach(t=> { %>
+                            <tr>
+                                <td>
+                                    <%= new Date(t.created_at).toLocaleString('pt-BR') %>
+                                </td>
+                                <td>
+                                    <%= t.operation %>
+                                </td>
+                                <td>
+                                    <%= t.environment %>
+                                </td>
+                                <td>
+                                    <span class="badge badge-<%= (t.status || '').toLowerCase() %>">
+                                        <%= t.status %>
+                                    </span>
+                                </td>
+                                <td class="mono">
+                                    <%= t.protocol || '-' %>
+                                </td>
+                                <td title="<%= t.error_message || '' %>">
+                                    <%= t.error_message ? (t.error_message.length> 60
+                                        ? t.error_message.slice(0, 60) + '…'
+                                        : t.error_message)
+                                        : '-' %>
+                                </td>
+                            </tr>
+                            <% }) %>
+                                <% } %>
+            </tbody>
+        </table>
+    </section>
+
+    <%- include('../../partials/foot') %>

@@ -1,0 +1,33 @@
+<%- include('../partials/head') %>
+<header>
+    <h1>Itens fiscais</h1>
+    <a class="small-button" href="/catalog/new">Novo item</a>
+</header>
+<section class="card">
+    <table>
+        <tr>
+            <th>Código</th>
+            <th>Descrição</th>
+            <th>Tipo</th>
+            <th>Preço</th>
+            <th>Ações</th>
+        </tr>
+        <% items.forEach(x=>{ %>
+        <tr>
+            <td><%= x.code %></td>
+            <td><%= x.description %></td>
+            <td><%= x.item_type %></td>
+            <td>R$ <%= Number(x.sale_price).toFixed(2) %></td>
+            <td>
+                <a class="inactive" href="/catalog/<%= x.id %>/edit">Editar</a>
+            </td>
+            <td>
+                <form method="post" action="/catalog/<%= x.id %>/delete" onsubmit="return confirm('Tem certeza que deseja excluir este item?');">
+                    <a class="small-button" href="javascript:void(0)" onclick="this.parentNode.submit()">Excluir</a>
+                </form>
+            </td>
+        </tr>
+        <% }) %>
+    </table>
+</section>
+<%- include('../partials/foot') %>

@@ -1,0 +1,37 @@
+<%- include('../partials/head') %>
+<h1>Extrato de caixa</h1>
+<form class="card filters">
+    <label>Conta<select name="account_id"><option value="">Todas</option>
+        <% accounts.forEach(a=>{ %><option value="<%= a.id %>" <%= String(filters.account_id)===String(a.id)?'selected':'' %>><%= a.name %></option><% }) %>
+    </select>
+</label>
+<label>De<input type="date" name="from" value="<%= filters.from %>"></label>
+<label>Até<input type="date" name="to" value="<%= filters.to %>"></label>
+<button>Filtrar</button>
+</form><section class="card">
+    <div class="table">
+    <table>
+        <tr>
+            <th>Data</th>
+            <th>Conta</th>
+            <th>Tipo</th>
+            <th>Descrição</th>
+            <th>Documento</th>
+            <th>Valor</th>
+            <th>Conciliação</th>
+        </tr>
+        <% entries.forEach(x=>{ %>
+        <tr>
+            <td><%= new Date(x.entry_date).toLocaleDateString('pt-BR',{timeZone:'UTC'}) %></td>
+            <td><%= x.account_name %></td>
+            <td><%= x.entry_type==='C'?'Crédito':'Débito' %></td>
+            <td><%= x.description %></td>
+            <td><%= x.document_number||'-' %></td>
+            <td>R$ <%= Number(x.amount).toFixed(2) %></td>
+            <td><%= x.reconciled?'Conciliado':'Pendente' %></td>
+        </tr>
+        <% }) %>
+    </table>
+    </div>
+</section>
+<%- include('../partials/foot') %>

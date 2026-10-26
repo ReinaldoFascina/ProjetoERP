@@ -1,0 +1,424 @@
+<%- include('../partials/head') %>
+
+<%
+  const maintenancePlans =
+    typeof plans !== "undefined" &&
+    Array.isArray(plans)
+      ? plans
+      : [];
+
+  const maintenanceAssets =
+    typeof assets !== "undefined" &&
+    Array.isArray(assets)
+      ? assets
+      : [];
+
+  const availableServiceTypes =
+    typeof serviceTypes !== "undefined" &&
+    Array.isArray(serviceTypes)
+      ? serviceTypes
+      : [];
+
+  const formatDate = (value) => {
+    if (!value) {
+      return "-";
+    }
+
+    return new Date(
+      value
+    ).toLocaleDateString(
+      "pt-BR",
+      {
+        timeZone: "UTC",
+      }
+    );
+  };
+%>
+
+<header class="page-header">
+  <div>
+    <span class="module">
+      MN · Manutenção preventiva
+    </span>
+
+    <h1>
+      Planos de manutenção
+    </h1>
+
+    <p>
+      Controle preventivo por data,
+      quilometragem, horímetro ou regra mista.
+    </p>
+  </div>
+</header>
+
+<section class="card">
+  <div class="section-heading">
+    <div>
+      <h2>Novo plano preventivo</h2>
+
+      <p>
+        Configure a periodicidade da manutenção
+        para um equipamento específico.
+      </p>
+    </div>
+  </div>
+
+  /maintenance/plans
+    <div class="form-grid">
+      <label>
+        Código *
+
+        <input
+          name="code"
+          required
+        >
+      </label>
+
+      <label>
+        Nome *
+
+        <input
+          name="name"
+          required
+        >
+      </label>
+
+      <label>
+        Equipamento
+
+        <select name="maintenance_asset_id">
+          <option value="">
+            Plano por tipo de bem
+          </option>
+
+          <% maintenanceAssets.forEach((asset) => { %>
+            <option
+              value="<%= asset.id %>"
+              data-asset-type="<%= asset.asset_type %>"
+              data-odometer="<%= asset.odometer || 0 %>"
+              data-hour-meter="<%= asset.hour_meter || 0 %>"
+            >
+              <%= asset.code %>
+              -
+              <%= asset.name %>
+              (<%= asset.asset_type %>)
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Tipo de serviço *
+
+        <select
+          name="service_type_id"
+          required
+        >
+          <option value="">
+            Selecione
+          </option>
+
+          <% availableServiceTypes.forEach((serviceType) => { %>
+            <option value="<%= serviceType.id %>">
+              <%= serviceType.code %>
+              -
+              <%= serviceType.name %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Gatilho *
+
+        <select
+          name="trigger_type"
+          required
+        >
+          <option value="DATE">
+            Data
+          </option>
+
+          <option value="ODOMETER">
+            Quilometragem
+          </option>
+
+          <option value="HOUR_METER">
+            Horímetro
+          </option>
+
+          <option value="MIXED">
+            Misto
+          </option>
+        </select>
+      </label>
+
+      <label>
+        Intervalo em dias
+
+        <input
+          type="number"
+          name="interval_days"
+          min="1"
+        >
+      </label>
+
+      <label>
+        Intervalo em quilômetros
+
+        <input
+          type="number"
+          step="0.01"
+          name="interval_odometer"
+          min="0"
+        >
+      </label>
+
+      <label>
+        Intervalo em horas
+
+        <input
+          type="number"
+          step="0.01"
+          name="interval_hours"
+          min="0"
+        >
+      </label>
+
+      <label>
+        Próxima data
+
+        <input
+          type="date"
+          name="next_execution_date"
+        >
+      </label>
+
+      <label>
+        Próxima quilometragem
+
+        <input
+          type="number"
+          step="0.01"
+          name="next_odometer"
+          min="0"
+        >
+      </label>
+
+      <label>
+        Próximo horímetro
+
+        <input
+          type="number"
+          step="0.01"
+          name="next_hour_meter"
+          min="0"
+        >
+      </label>
+
+      <label>
+        Prioridade
+
+        <select name="priority">
+          <option value="LOW">
+            Baixa
+          </option>
+
+          <option
+            value="NORMAL"
+            selected
+          >
+            Normal
+          </option>
+
+          <option value="HIGH">
+            Alta
+          </option>
+
+          <option value="URGENT">
+            Urgente
+          </option>
+        </select>
+      </label>
+
+      <label class="span-2">
+        Instruções
+
+        <textarea
+          name="instructions"
+          rows="4"
+          placeholder="Procedimentos, verificações e peças previstas."
+        ></textarea>
+      </label>
+    </div>
+
+    <% if (!maintenanceAssets.length) { %>
+      <div class="alert">
+        Nenhum equipamento de manutenção
+        está cadastrado.
+
+        /maintenance/assets
+          Cadastrar equipamento
+        </a>
+      </div>
+    <% } %>
+
+    <% if (!availableServiceTypes.length) { %>
+      <div class="alert">
+        Nenhum tipo de manutenção está cadastrado.
+
+        /maintenance/service-types
+          Cadastrar tipo de manutenção
+        </a>
+      </div>
+    <% } %>
+
+    <div class="form-actions">
+      <button
+        type="submit"
+        <%= availableServiceTypes.length
+          ? ""
+          : "disabled" %>
+      >
+        Salvar plano
+      </button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <div>
+      <h2>Planos cadastrados</h2>
+
+      <p>
+        <%= maintenancePlans.length %>
+        plano(s) encontrado(s).
+      </p>
+    </div>
+  </div>
+
+  <div class="table">
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Plano</th>
+          <th>Equipamento</th>
+          <th>Serviço</th>
+          <th>Gatilho</th>
+          <th>Periodicidade</th>
+          <th>Próxima execução</th>
+          <th>Prioridade</th>
+          <th>Situação</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% maintenancePlans.forEach((plan) => { %>
+          <tr>
+            <td>
+              <strong>
+                <%= plan.code %>
+              </strong>
+            </td>
+
+            <td>
+              <%= plan.name %>
+            </td>
+
+            <td>
+              <% if (plan.asset_code) { %>
+                <strong>
+                  <%= plan.asset_code %>
+                </strong>
+
+                <br>
+
+                <small>
+                  <%= plan.asset_name %>
+                </small>
+              <% } else { %>
+                Por tipo de bem
+              <% } %>
+            </td>
+
+            <td>
+              <%= plan.service_name || "-" %>
+            </td>
+
+            <td>
+              <%= plan.trigger_type %>
+            </td>
+
+            <td>
+              <% if (plan.interval_days) { %>
+                <%= plan.interval_days %> dias
+                <br>
+              <% } %>
+
+              <% if (plan.interval_odometer) { %>
+                <%= plan.interval_odometer %> km
+                <br>
+              <% } %>
+
+              <% if (plan.interval_hours) { %>
+                <%= plan.interval_hours %> horas
+              <% } %>
+            </td>
+
+            <td>
+              <% if (plan.next_execution_date) { %>
+                <%= formatDate(
+                  plan.next_execution_date
+                ) %>
+              <% } %>
+
+              <% if (plan.next_odometer) { %>
+                <br>
+                <%= plan.next_odometer %> km
+              <% } %>
+
+              <% if (plan.next_hour_meter) { %>
+                <br>
+                <%= plan.next_hour_meter %> horas
+              <% } %>
+            </td>
+
+            <td>
+              <span class="pill">
+                <%= plan.priority %>
+              </span>
+            </td>
+
+            <td>
+              <span
+                class="pill <%= plan.active
+                  ? ""
+                  : "inactive" %>"
+              >
+                <%= plan.active
+                  ? "Ativo"
+                  : "Inativo" %>
+              </span>
+            </td>
+          </tr>
+        <% }) %>
+
+        <% if (!maintenancePlans.length) { %>
+          <tr>
+            <td
+              colspan="9"
+              class="empty-state"
+            >
+              Nenhum plano preventivo cadastrado.
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('../partials/foot') %>

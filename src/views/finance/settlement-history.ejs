@@ -1,0 +1,35 @@
+<section class="card">
+  <h2>Histórico de baixas</h2>
+  <div class="table">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th><th>Conta/Caixa</th><th>Valor</th><th>Líquido</th>
+          <th>Status</th><th>Motivo do cancelamento</th><th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% settlements.forEach((settlement) => { %>
+          <tr>
+            <td><%= new Date(settlement.settlement_date).toLocaleDateString('pt-BR',{timeZone:'UTC'}) %></td>
+            <td><%= settlement.cash_account_name %></td>
+            <td>R$ <%= Number(settlement.amount).toFixed(2) %></td>
+            <td>R$ <%= Number(settlement.net_amount).toFixed(2) %></td>
+            <td><span class="pill <%= settlement.status === 'CANCELADA' ? 'inactive' : 'success' %>"><%= settlement.status %></span></td>
+            <td><%= settlement.reversal_reason || '-' %></td>
+            <td>
+              <% if (settlement.status !== 'CANCELADA' && !settlement.reconciled) { %>
+                <form method="post" action="/finance/settlements/<%= settlement.id %>/cancel" onsubmit="return confirm('Cancelar esta baixa e estornar o lançamento de caixa?')">
+                  <input name="reason" minlength="5" placeholder="Motivo do cancelamento" required>
+                  <button class="danger" type="submit">Cancelar baixa</button>
+                </form>
+              <% } else if (settlement.reconciled) { %>
+                <small>Desfaça a conciliação primeiro.</small>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>

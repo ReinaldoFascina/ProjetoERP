@@ -1,0 +1,6 @@
+<% if (activeModule.key === "patrimonio" && canManage) { %>
+  <a class="nav-link" href="/assets" data-path="/assets"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard patrimonial</span></a>
+  <div class="nav-group"><button class="submenu-toggle" type="button" aria-expanded="false"><span class="nav-icon">▦</span><span class="nav-label">Patrimônio</span><span class="submenu-arrow">⌄</span></button><div class="submenu"><a href="/assets">Bens patrimoniais</a><a href="/assets/new">Novo patrimônio</a><a href="/assets/categories">Categorias</a><a href="/assets/responsibles">Responsáveis</a></div></div>
+  <div class="nav-group"><button class="submenu-toggle" type="button" aria-expanded="false"><span class="nav-icon">⚙</span><span class="nav-label">Processos</span><span class="submenu-arrow">⌄</span></button><div class="submenu"><a href="/assets/purchase-rules">Compra automática</a><a href="/assets/depreciation">Depreciação e contabilização</a></div></div>
+  <div class="nav-group"><button class="submenu-toggle" type="button" aria-expanded="false"><span class="nav-icon">▥</span><span class="nav-label">Relatórios</span><span class="submenu-arrow">⌄</span></button><div class="submenu"><a href="/assets/reports/position">Posição patrimonial</a></div></div>
+<% } %>

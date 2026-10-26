@@ -1,0 +1,143 @@
+<%- include('partials/head') %>
+
+    <header>
+        <div>
+            <h1>Central de atendimento</h1>
+            <p>Visão operacional</p>
+        </div>
+        <a class="button" href="/tickets/new">+ Novo chamado</a>
+    </header>
+
+    <section class="metrics">
+        <div class="card">
+            <span>Chamados abertos</span>
+            <b>
+                <%= open %>
+            </b>
+        </div>
+        <div class="card">
+            <span>Horas faturáveis</span>
+            <b>
+                <%= (billable / 60).toFixed(1) %>h
+            </b>
+        </div>
+        <div class="card">
+            <span>Agendamentos hoje</span>
+            <b>
+                <%= agenda.length %>
+            </b>
+        </div>
+        <div class="card billing-total">
+            <span>A faturar no mês</span>
+            <b>
+                <%= billingTotal.toLocaleString('pt-BR', { style: 'currency' , currency: 'BRL' }) %>
+            </b>
+        </div>
+    </section>
+
+    <section class="card dashboard-section">
+        <div class="section-heading">
+            <div>
+                <h2>Horas a faturar no mês por cliente</h2>
+                <p>
+                    Calculado com as horas faturáveis dos RATs e o valor/hora do cadastro do cliente.
+                </p>
+            </div>
+            <span class="pill">
+                <%= new Date().toLocaleDateString('pt-BR', { month: 'long' , year: 'numeric' }) %>
+            </span>
+        </div>
+
+        <div class="table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Valor/hora</th>
+                        <th>Horas faturáveis</th>
+                        <th>Horas aprovadas</th>
+                        <th>Valor a faturar</th>
+                        <th>Valor aprovado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% billing.forEach(item=> { %>
+                        <tr>
+                            <td><strong>
+                                    <%= item.corporate_name %>
+                                </strong></td>
+                            <td>
+                                <%= Number(item.hourly_rate).toLocaleString('pt-BR', { style: 'currency' ,
+                                    currency: 'BRL' }) %>
+                            </td>
+                            <td>
+                                <%= (item.billable_minutes / 60).toFixed(2) %>h
+                            </td>
+                            <td>
+                                <%= (item.approved_minutes / 60).toFixed(2) %>h
+                            </td>
+                            <td>
+                                <strong>
+                                    <%= Number(item.amount).toLocaleString('pt-BR', { style: 'currency' ,
+                                        currency: 'BRL' }) %>
+                                </strong>
+                            </td>
+                            <td>
+                                <%= Number(item.approved_amount).toLocaleString('pt-BR', { style: 'currency' ,
+                                    currency: 'BRL' }) %>
+                            </td>
+                        </tr>
+                        <% }) %>
+
+                            <% if (!billing.length) { %>
+                                <tr>
+                                    <td colspan="6">Nenhum RAT faturável registrado no mês atual.</td>
+                                </tr>
+                                <% } %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card dashboard-section">
+        <h2>Chamados recentes</h2>
+
+        <div class="table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Título</th>
+                        <th>Cliente</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% tickets.forEach(t=> { %>
+                        <tr>
+                            <td>
+                                <%= t.number %>
+                            </td>
+                            <td>
+                                <%= t.title %>
+                            </td>
+                            <td>
+                                <%= t.corporate_name %>
+                            </td>
+                            <td><span class="pill">
+                                    <%= t.status %>
+                                </span></td>
+                        </tr>
+                        <% }) %>
+
+                            <% if (!tickets.length) { %>
+                                <tr>
+                                    <td colspan="4">Nenhum chamado registrado.</td>
+                                </tr>
+                                <% } %>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <%- include('partials/foot') %>

@@ -1,0 +1,6 @@
+<% if (activeModule.key === "manutencao" && canManage) { %>
+<a class="nav-link" href="/maintenance" data-path="/maintenance"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard de manutenção</span></a>
+<div class="nav-group"><button class="submenu-toggle"><span class="nav-icon">▤</span><span class="nav-label">Oficina</span><span class="submenu-arrow">⌄</span></button><div class="submenu"><a href="/maintenance/orders">Ordens de manutenção</a><a href="/maintenance/plans">Planos preventivos</a></div></div>
+<div class="nav-group"><button class="submenu-toggle"><span class="nav-icon">⚙</span><span class="nav-label">Cadastros</span><span class="submenu-arrow">⌄</span></button><div class="submenu"><a href="/maintenance/assets">Máquinas, veículos e bens</a><a href="/maintenance/service-types">Tipos de manutenção</a><a href="/catalog">Peças e materiais</a></div></div>
+<div class="nav-group"><button class="submenu-toggle"><span class="nav-icon">▥</span><span class="nav-label">Relatórios</span><span class="submenu-arrow">⌄</span></button><div class="submenu"><a href="/maintenance/reports/costs">Custos por bem</a></div></div>
+<% } %>

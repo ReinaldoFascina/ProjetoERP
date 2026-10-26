@@ -1,0 +1,226 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS comex_partners (
+  id BIGSERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  branch_id INTEGER NOT NULL,
+  client_id INTEGER REFERENCES clients(id),
+  partner_type VARCHAR(30) NOT NULL,
+  code VARCHAR(40) NOT NULL,
+  name VARCHAR(180) NOT NULL,
+  document VARCHAR(40),
+  country_code CHAR(2),
+  scac_code VARCHAR(10),
+  iata_code VARCHAR(20),
+  contact_name VARCHAR(120),
+  email VARCHAR(160),
+  phone VARCHAR(40),
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(company_id, branch_id, partner_type, code),
+  CHECK(partner_type IN ('IMPORTER','EXPORTER','SHIPOWNER','CARRIER','FREIGHT_FORWARDER','CUSTOMS_BROKER','NVOCC','TERMINAL','WAREHOUSE','INSURER','SUPPLIER','CUSTOMER','OTHER'))
+);
+
+CREATE TABLE IF NOT EXISTS comex_processes (
+  id BIGSERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  branch_id INTEGER NOT NULL,
+  process_number VARCHAR(50) NOT NULL,
+  direction VARCHAR(10) NOT NULL,
+  operation_type VARCHAR(30) NOT NULL DEFAULT 'STANDARD',
+  importer_id BIGINT REFERENCES comex_partners(id),
+  exporter_id BIGINT REFERENCES comex_partners(id),
+  freight_forwarder_id BIGINT REFERENCES comex_partners(id),
+  customs_broker_id BIGINT REFERENCES comex_partners(id),
+  shipowner_id BIGINT REFERENCES comex_partners(id),
+  customer_id INTEGER REFERENCES clients(id),
+  supplier_id INTEGER REFERENCES clients(id),
+  incoterm VARCHAR(10),
+  origin_country CHAR(2),
+  destination_country CHAR(2),
+  origin_port VARCHAR(100),
+  destination_port VARCHAR(100),
+  customs_unit VARCHAR(120),
+  currency_code CHAR(3) NOT NULL DEFAULT 'USD',
+  exchange_rate NUMERIC(18,8) NOT NULL DEFAULT 1,
+  goods_value NUMERIC(18,2) NOT NULL DEFAULT 0,
+  freight_value NUMERIC(18,2) NOT NULL DEFAULT 0,
+  insurance_value NUMERIC(18,2) NOT NULL DEFAULT 0,
+  estimated_landed_cost NUMERIC(18,2) NOT NULL DEFAULT 0,
+  actual_landed_cost NUMERIC(18,2) NOT NULL DEFAULT 0,
+  status VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
+  opening_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  expected_arrival_date DATE,
+  clearance_date DATE,
+  closing_date DATE,
+  responsible_user_id INTEGER REFERENCES users(id),
+  cost_center_id BIGINT REFERENCES accounting_cost_centers(id),
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(company_id, branch_id, process_number),
+  CHECK(direction IN ('IMPORT','EXPORT')),
+  CHECK(status IN ('DRAFT','BOOKING','IN_TRANSIT','ARRIVED','CUSTOMS_CLEARANCE','CLEARED','DELIVERED','CLOSED','CANCELLED'))
+);
+
+CREATE TABLE IF NOT EXISTS comex_process_items (
+  id BIGSERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  branch_id INTEGER NOT NULL,
+  process_id BIGINT NOT NULL REFERENCES comex_processes(id) ON DELETE CASCADE,
+  catalog_item_id BIGINT REFERENCES catalog_items(id),
+  sequence INTEGER NOT NULL,
+  description VARCHAR(240) NOT NULL,
+  ncm_code VARCHAR(10),
+  sku VARCHAR(60),
+  country_of_origin CHAR(2),
+  quantity NUMERIC(18,6) NOT NULL,
+  unit VARCHAR(10),
+  unit_value NUMERIC(18,6) NOT NULL DEFAULT 0,
+  total_value NUMERIC(18,2) NOT NULL DEFAULT 0,
+  net_weight NUMERIC(18,6) NOT NULL DEFAULT 0,
+  gross_weight NUMERIC(18,6) NOT NULL DEFAULT 0,
+  manufacturer_name VARCHAR(180),
+  manufacturer_code VARCHAR(80),
+  UNIQUE(process_id, sequence),
+  CHECK(quantity > 0)
+);
+
+CREATE TABLE IF NOT EXISTS comex_shipments (
+  id BIGSERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  branch_id INTEGER NOT NULL,
+  process_id BIGINT NOT NULL REFERENCES comex_processes(id) ON DELETE CASCADE,
+  shipment_number VARCHAR(50) NOT NULL,
+  transport_mode VARCHAR(20) NOT NULL,
+  booking_number VARCHAR(80),
+  master_document VARCHAR(80),
+  house_document VARCHAR(80),
+  vessel_name VARCHAR(120),
+  voyage_number VARCHAR(50),
+  flight_number VARCHAR(50),
+  carrier_id BIGINT REFERENCES comex_partners(id),
+  freight_forwarder_id BIGINT REFERENCES comex_partners(id),
+  origin_terminal VARCHAR(120),
+  destination_terminal VARCHAR(120),
+  etd DATE,
+  eta DATE,
+  actual_departure DATE,
+  actual_arrival DATE,
+  free_time_days INTEGER NOT NULL DEFAULT 0,
+  demurrage_daily_rate NUMERIC(18,2) NOT NULL DEFAULT 0,
+  status VARCHAR(30) NOT NULL DEFAULT 'BOOKED',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(process_id, shipment_number),
+  CHECK(transport_mode IN ('SEA','AIR','ROAD','RAIL','MULTIMODAL')),
+  CHECK(status IN ('BOOKED','CONFIRMED','DEPARTED','IN_TRANSIT','ARRIVED','DELIVERED','CANCELLED'))
+);
+
+CREATE TABLE IF NOT EXISTS comex_containers (
+  id BIGSERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  branch_id INTEGER NOT NULL,
+  shipment_id BIGINT NOT NULL REFERENCES comex_shipments(id) ON DELETE CASCADE,
+  container_number VARCHAR(20) NOT NULL,
+  container_type VARCHAR(20),
+  seal_number VARCHAR(40),
+  tare_weight NUMERIC(18,3),
+  gross_weight NUMERIC(18,3),
+  packages INTEGER,
+  pickup_date DATE,
+  gate_in_date DATE,
+  return_deadline DATE,
+  return_date DATE,
+  demurrage_days INTEGER NOT NULL DEFAULT 0,
+  demurrage_amount NUMERIC(18,2) NOT NULL DEFAULT 0,
+  status VARCHAR(30) NOT NULL DEFAULT 'PLANNED',
+  UNIQUE(shipment_id, container_number)
+);
+
+CREATE TABLE IF NOT EXISTS comex_customs_declarations (
+  id BIGSERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  branch_id INTEGER NOT NULL,
+  process_id BIGINT NOT NULL REFERENCES comex_processes(id) ON DELETE CASCADE,
+  declaration_type VARCHAR(20) NOT NULL,
+  declaration_number VARCHAR(80),
+  registration_date DATE,
+  channel VARCHAR(20),
+  lpco_number VARCHAR(80),
+  li_number VARCHAR(80),
+  due_number VARCHAR(80),
+  customs_broker_id BIGINT REFERENCES comex_partners(id),
+  status VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
+  requirements TEXT,
+  released_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK(declaration_type IN ('DUIMP','DI','DSI','DU_E','DUE_SIMPLIFIED','OTHER')),
+  CHECK(status IN ('DRAFT','REGISTERED','UNDER_REVIEW','REQUIREMENT','RELEASED','CANCELLED'))
+);
+
+CREATE TABLE IF NOT EXISTS comex_documents (
+  id BIGSERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  branch_id INTEGER NOT NULL,
+  process_id BIGINT NOT NULL REFERENCES comex_processes(id) ON DELETE CASCADE,
+  document_type VARCHAR(40) NOT NULL,
+  document_number VARCHAR(100),
+  issue_date DATE,
+  expiry_date DATE,
+  issuer VARCHAR(160),
+  file_name VARCHAR(240),
+  storage_path TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK(status IN ('PENDING','RECEIVED','VALIDATED','EXPIRED','REJECTED'))
+);
+
+CREATE TABLE IF NOT EXISTS comex_milestones (
+  id BIGSERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  branch_id INTEGER NOT NULL,
+  process_id BIGINT NOT NULL REFERENCES comex_processes(id) ON DELETE CASCADE,
+  shipment_id BIGINT REFERENCES comex_shipments(id) ON DELETE CASCADE,
+  milestone_type VARCHAR(50) NOT NULL,
+  planned_at TIMESTAMPTZ,
+  actual_at TIMESTAMPTZ,
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  responsible_partner_id BIGINT REFERENCES comex_partners(id),
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK(status IN ('PENDING','IN_PROGRESS','COMPLETED','DELAYED','CANCELLED'))
+);
+
+CREATE TABLE IF NOT EXISTS comex_costs (
+  id BIGSERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  branch_id INTEGER NOT NULL,
+  process_id BIGINT NOT NULL REFERENCES comex_processes(id) ON DELETE CASCADE,
+  shipment_id BIGINT REFERENCES comex_shipments(id),
+  supplier_id INTEGER REFERENCES clients(id),
+  cost_type VARCHAR(40) NOT NULL,
+  description VARCHAR(200) NOT NULL,
+  currency_code CHAR(3) NOT NULL DEFAULT 'BRL',
+  exchange_rate NUMERIC(18,8) NOT NULL DEFAULT 1,
+  original_amount NUMERIC(18,2) NOT NULL,
+  amount_brl NUMERIC(18,2) NOT NULL,
+  due_date DATE,
+  paid_date DATE,
+  status VARCHAR(20) NOT NULL DEFAULT 'PROJECTED',
+  financial_title_id BIGINT,
+  document_number VARCHAR(80),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK(cost_type IN ('INTERNATIONAL_FREIGHT','DOMESTIC_FREIGHT','INSURANCE','THC','STORAGE','DEMURRAGE','DETENTION','BROKERAGE','FORWARDER_FEE','PORT_FEE','AIRPORT_FEE','TAX','DUTY','LICENSE','HANDLING','OTHER')),
+  CHECK(status IN ('PROJECTED','CONFIRMED','INVOICED','PAID','CANCELLED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_comex_process_status ON comex_processes(company_id, branch_id, direction, status);
+CREATE INDEX IF NOT EXISTS idx_comex_shipment_eta ON comex_shipments(company_id, branch_id, eta, status);
+CREATE INDEX IF NOT EXISTS idx_comex_documents_expiry ON comex_documents(company_id, branch_id, expiry_date, status);
+CREATE INDEX IF NOT EXISTS idx_comex_costs_process ON comex_costs(company_id, branch_id, process_id, status);
+
+COMMIT;

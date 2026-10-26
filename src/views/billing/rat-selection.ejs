@@ -1,0 +1,58 @@
+<%- include('../partials/head') %>
+
+<header>
+  <h1>Faturar RATs</h1>
+  <p>Selecione vários RATs do mesmo cliente para gerar um único movimento.</p>
+</header>
+
+<form class="card" method="post" action="/rats/billing/create" id="ratBilling">
+  <label>
+    Vencimento
+    <input type="date" name="due_date" required>
+  </label>
+
+  <table>
+    <tr>
+      <th></th>
+      <th>Cliente</th>
+      <th>RAT</th>
+      <th>Data</th>
+      <th>Serviço</th>
+      <th>Horas</th>
+      <th>Valor</th>
+    </tr>
+
+    <% rats.forEach(x => { %>
+      <tr>
+        <td>
+          <input
+            type="checkbox"
+            name="rat_ids"
+            value="<%= x.id %>"
+            data-client="<%= x.client_id %>"
+          >
+        </td>
+        <td><%= x.corporate_name %></td>
+        <td><%= x.number %></td>
+        <td><%= new Date(x.service_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) %></td>
+        <td><%= x.fiscal_code %> - <%= x.fiscal_item %></td>
+        <td><%= (x.billable_minutes / 60).toFixed(2) %></td>
+        <td>R$ <%= Number(x.total).toFixed(2) %></td>
+      </tr>
+    <% }) %>
+  </table>
+
+  <button>Gerar movimento único</button>
+</form>
+
+<script>
+  document.getElementById('ratBilling').onsubmit = (e) => {
+    const c = [...document.querySelectorAll('[name=rat_ids]:checked')];
+    if (!c.length || new Set(c.map((x) => x.dataset.client)).size !== 1) {
+      e.preventDefault();
+      alert('Selecione RATs do mesmo cliente.');
+    }
+  };
+</script>
+
+<%- include('../partials/foot') %>

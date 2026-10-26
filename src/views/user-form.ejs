@@ -1,0 +1,43 @@
+<%- include('partials/head') %>
+<header><div><h1><%= pageTitle %></h1><p>Defina os dados de acesso e o perfil de permissões.</p></div><a class="small-button" href="/users">Voltar</a></header>
+<% if(error){ %><div class="alert"><%= error %></div><% } %>
+<form class="card form access-form" method="post" action="<%= action %>" id="accessUserForm">
+  <div class="form-grid">
+    <label>Nome completo *<input name="name" maxlength="120" value="<%= account?.name||'' %>" required autocomplete="name"></label>
+    <label>E-mail de acesso *<input type="email" name="email" maxlength="180" value="<%= account?.email||'' %>" required autocomplete="email"></label>
+    <label>Telefone<input name="phone" maxlength="30" value="<%= account?.phone||'' %>"></label>
+    <label>Perfil *<select name="role" id="role" required><% ['ADMIN','COORDENADOR','TECNICO','CLIENTE'].forEach(x=>{ %><option value="<%= x %>" <%= (account?.role||'CLIENTE')===x?'selected':'' %>><%= x %></option><% }) %></select></label>
+    <label id="clientField">Cliente vinculado *<select name="client_id" id="client_id"><option value="">Selecione</option><% clients.forEach(c=>{ %><option value="<%= c.id %>" <%= String(account?.client_id||'')===String(c.id)?'selected':'' %>><%= c.corporate_name %></option><% }) %></select><small>Obrigatório para usuários com perfil CLIENTE.</small></label>
+    <label>Senha <%= account?'(deixe vazia para manter)':'*' %><input type="password" name="password" minlength="8" <%= account?'':'required' %> autocomplete="new-password"><small>Mínimo de 8 caracteres.</small></label>
+  </div>
+  <div class="access-options">
+    <label class="check"><input type="checkbox" name="active" <%= account?.active===false?'':'checked' %>> Usuário ativo</label>
+    <label class="check"><input type="checkbox" name="must_change_password" <%= account?.must_change_password===false?'':'checked' %>> Exigir troca de senha no próximo acesso</label>
+  </div>
+  <section class="permission-summary" id="permissionSummary"></section>
+  <div class="form-actions"><a class="small-button secondary" href="/users">Cancelar</a><button type="submit">Salvar usuário</button></div>
+</form>
+<script>
+(() => {
+  const role = document.getElementById('role');
+  const clientField = document.getElementById('clientField');
+  const client = document.getElementById('client_id');
+  const summary = document.getElementById('permissionSummary');
+  const descriptions = {
+    ADMIN: '<strong>Administrador:</strong> acesso completo aos cadastros, usuários, faturamento e configurações.',
+    COORDENADOR: '<strong>Coordenador:</strong> gerencia clientes, técnicos, chamados, agenda, RAT e relatórios.',
+    TECNICO: '<strong>Técnico:</strong> acessa chamados atribuídos, própria agenda e seus RATs.',
+    CLIENTE: '<strong>Cliente:</strong> consulta dados vinculados ao cliente selecionado.'
+  };
+  function updateRole() {
+    const isClient = role.value === 'CLIENTE';
+    clientField.hidden = !isClient;
+    client.required = isClient;
+    if (!isClient) client.value = '';
+    summary.innerHTML = descriptions[role.value] || '';
+  }
+  role.addEventListener('change', updateRole);
+  updateRole();
+})();
+</script>
+<%- include('partials/foot') %>

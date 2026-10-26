@@ -1,0 +1,43 @@
+import { Router } from 'express';
+import { db } from '../database/db.js';
+import { requireAuth,allow } from '../middleware/auth.js';
+import { createCrmTicket,addInteraction,transferTicket } from '../services/technical-crm/ticket-service.js';
+export const technicalCrmRouter=Router();
+const guard=[requireAuth,allow('ADMIN','COORDENADOR','TECNICO')];const asyncRoute=f=>(req,res,next)=>Promise.resolve(f(req,res,next)).catch(next);const ctx=req=>({companyId:Number(req.session.companyId),branchId:Number(req.session.branchId),userId:Number(req.session.user.id)});const id=v=>{const n=Number(v);if(!Number.isInteger(n)||n<=0)throw new Error('Identificador inválido.');return n;};
+async function lookups(c){const [groups,users,clients]=await Promise.all([db.query(`SELECT * FROM technical_crm_groups WHERE company_id=$1 AND branch_id=$2 AND active=TRUE ORDER BY name`,[c.companyId,c.branchId]),db.query(`SELECT id,name,email FROM users WHERE active=TRUE ORDER BY name`),db.query(`SELECT id,corporate_name,email FROM clients WHERE company_id=$1 AND branch_id=$2 AND active=TRUE ORDER BY corporate_name`,[c.companyId,c.branchId])]);return {groups:groups.rows,users:users.rows,clients:clients.rows};}
+technicalCrmRouter.get('/technical-crm',...guard,asyncRoute(async(req,res)=>{const c=ctx(req);const [open,mine,unassigned,today]=await Promise.all([db.query(`SELECT COUNT(*)::integer total FROM tickets WHERE company_id=$1 AND branch_id=$2 AND status NOT IN ('FECHADO','CANCELADO')`,[c.companyId,c.branchId]),db.query(`SELECT COUNT(*)::integer total FROM tickets WHERE company_id=$1 AND branch_id=$2 AND assigned_user_id=$3 AND status NOT IN ('FECHADO','CANCELADO')`,[c.companyId,c.branchId,c.userId]),db.query(`SELECT COUNT(*)::integer total FROM tickets WHERE company_id=$1 AND branch_id=$2 AND assigned_user_id IS NULL AND status NOT IN ('FECHADO','CANCELADO')`,[c.companyId,c.branchId]),db.query(`SELECT COUNT(*)::integer total FROM tickets WHERE company_id=$1 AND branch_id=$2 AND created_at::date=CURRENT_DATE`,[c.companyId,c.branchId])]);res.render('technical-crm/dashboard',{pageTitle:'CRM de Atendimento Técnico',stats:{open:open.rows[0].total,mine:mine.rows[0].total,unassigned:unassigned.rows[0].total,today:today.rows[0].total}})}));
+technicalCrmRouter.get('/technical-crm/tickets',...guard,asyncRoute(async(req,res)=>{const c=ctx(req);const rows=await db.query(`SELECT t.*,g.name group_name,u.name assigned_name FROM tickets t LEFT JOIN technical_crm_groups g ON g.id=t.assigned_group_id LEFT JOIN users u ON u.id=t.assigned_user_id WHERE t.company_id=$1 AND t.branch_id=$2 ORDER BY t.id DESC LIMIT 500`,[c.companyId,c.branchId]);res.render('technical-crm/tickets',{pageTitle:'Chamados CRM',rows:rows.rows})}));
+technicalCrmRouter.get('/technical-crm/tickets/new',...guard,asyncRoute(async(req,res)=>res.render('technical-crm/ticket-new',{pageTitle:'Novo atendimento',...await lookups(ctx(req))})));
+technicalCrmRouter.post('/technical-crm/tickets',...guard,asyncRoute(async(req,res)=>{const c=ctx(req),b=req.body;const t=await createCrmTicket({...c,title:b.title,description:b.description,requesterEmail:b.requester_email,clientId:b.client_id||null,groupId:b.group_id||null,supportType:b.support_type||'SUPPORT'});res.redirect(`/technical-crm/tickets/${t.id}`)}));
+technicalCrmRouter.get('/technical-crm/tickets/:id(\\d+)',...guard,asyncRoute(async(req,res)=>{const c=ctx(req),ticketId=id(req.params.id);const [ticket,interactions,assignments,l]=await Promise.all([db.query(`SELECT t.*,g.name group_name,u.name assigned_name FROM tickets t LEFT JOIN technical_crm_groups g ON g.id=t.assigned_group_id LEFT JOIN users u ON u.id=t.assigned_user_id WHERE t.id=$1 AND t.company_id=$2 AND t.branch_id=$3`,[ticketId,c.companyId,c.branchId]),db.query(`SELECT i.*,u.name created_by_name FROM technical_crm_interactions i LEFT JOIN users u ON u.id=i.created_by WHERE i.ticket_id=$1 ORDER BY i.id`,[ticketId]),db.query(`SELECT a.*,pg.name previous_group_name,ng.name new_group_name,pu.name previous_user_name,nu.name new_user_name FROM technical_crm_assignments a LEFT JOIN technical_crm_groups pg ON pg.id=a.previous_group_id LEFT JOIN technical_crm_groups ng ON ng.id=a.new_group_id LEFT JOIN users pu ON pu.id=a.previous_user_id LEFT JOIN users nu ON nu.id=a.new_user_id WHERE a.ticket_id=$1 ORDER BY a.id`,[ticketId]),lookups(c)]);if(!ticket.rows[0])return res.status(404).render('error',{message:'Chamado não encontrado.'});res.render('technical-crm/ticket-detail',{pageTitle:`Chamado ${ticket.rows[0].protocol}`,ticket:ticket.rows[0],interactions:interactions.rows,assignments:assignments.rows,...l})}));
+technicalCrmRouter.post('/technical-crm/tickets/:id(\\d+)/interactions',...guard,asyncRoute(async(req,res)=>{const c=ctx(req),ticketId=id(req.params.id);await addInteraction({...c,ticketId,type:req.body.type,message:req.body.message,visibility:req.body.visibility||'PUBLIC'});res.redirect(`/technical-crm/tickets/${ticketId}#${req.body.type.toLowerCase()}`)}));
+technicalCrmRouter.post('/technical-crm/tickets/:id(\\d+)/transfer',...guard,asyncRoute(async(req,res)=>{const c=ctx(req),ticketId=id(req.params.id);await transferTicket({...c,ticketId,toGroupId:id(req.body.to_group_id),toUserId:req.body.to_user_id||null,reason:req.body.reason});res.redirect(`/technical-crm/tickets/${ticketId}#transfer`)}));
+technicalCrmRouter.get('/technical-crm/settings/notifications',...guard,asyncRoute(async(req,res)=>{const c=ctx(req);const rows=await db.query(`SELECT * FROM technical_crm_notification_rules WHERE company_id=$1 AND branch_id=$2 ORDER BY event_code`,[c.companyId,c.branchId]);res.render('technical-crm/notification-rules',{pageTitle:'Notificações por etapa',rows:rows.rows})}));
+technicalCrmRouter.post('/technical-crm/settings/notifications/:id(\\d+)',...guard,asyncRoute(async(req,res)=>{const c=ctx(req);await db.query(`UPDATE technical_crm_notification_rules SET enabled=$1,notify_requester=$2,notify_stage_owner=$3,notify_assigned_user=$4,notify_assigned_group=$5,subject_template=$6,body_template=$7,updated_at=NOW() WHERE id=$8 AND company_id=$9 AND branch_id=$10`,[!!req.body.enabled,!!req.body.notify_requester,!!req.body.notify_stage_owner,!!req.body.notify_assigned_user,!!req.body.notify_assigned_group,req.body.subject_template||null,req.body.body_template||null,id(req.params.id),c.companyId,c.branchId]);res.redirect('/technical-crm/settings/notifications')}));
+// Adicione antes do tratamento 404 e depois da declaração de technicalCrmRouter.
+technicalCrmRouter.get('/technical-crm/groups', ...guard, asyncRoute(async (req, res) => {
+  const c = ctx(req);
+  const [groups, users] = await Promise.all([
+    db.query(`SELECT * FROM technical_crm_groups WHERE company_id=$1 AND branch_id=$2 ORDER BY name`, [c.companyId, c.branchId]),
+    db.query(`SELECT id,name,email FROM users WHERE active=TRUE ORDER BY name`),
+  ]);
+  res.render('technical-crm/groups', { pageTitle: 'Grupos técnicos', rows: groups.rows, users: users.rows });
+}));
+
+technicalCrmRouter.post('/technical-crm/groups', ...guard, asyncRoute(async (req, res) => {
+  const c = ctx(req); const b = req.body;
+  await db.query(`INSERT INTO technical_crm_groups(company_id,branch_id,name,description,email,roulette_enabled,active) VALUES($1,$2,$3,$4,$5,$6,TRUE)`, [c.companyId,c.branchId,b.name,b.description||null,b.email||null,b.roulette_enabled==='1']);
+  res.redirect('/technical-crm/groups');
+}));
+
+technicalCrmRouter.post('/technical-crm/groups/:id(\\d+)/members', ...guard, asyncRoute(async (req, res) => {
+  const c = ctx(req); const b = req.body;
+  await db.query(`INSERT INTO technical_crm_group_members(company_id,branch_id,group_id,user_id,roulette_weight,roulette_order,active) VALUES($1,$2,$3,$4,$5,$6,TRUE) ON CONFLICT(company_id,branch_id,group_id,user_id) DO UPDATE SET roulette_weight=EXCLUDED.roulette_weight,roulette_order=EXCLUDED.roulette_order,active=TRUE`, [c.companyId,c.branchId,Number(req.params.id),Number(b.user_id),Number(b.roulette_weight||1),Number(b.roulette_order||1)]);
+  res.redirect('/technical-crm/groups');
+}));
+
+technicalCrmRouter.post('/technical-crm/tickets/:id(\\d+)/operational-data', ...guard, asyncRoute(async (req, res) => {
+  const c = ctx(req); const b = req.body; const ticketId = Number(req.params.id);
+  await db.query(`UPDATE tickets SET assigned_group_id=$1,assigned_user_id=$2,stage=$3,channel=$4,support_type=$5,requester_email=$6,updated_at=NOW() WHERE id=$7 AND company_id=$8 AND branch_id=$9`, [b.assigned_group_id||null,b.assigned_user_id||null,b.stage,b.channel,b.support_type,b.requester_email||null,ticketId,c.companyId,c.branchId]);
+  res.redirect(`/technical-crm/tickets/${ticketId}`);
+}));

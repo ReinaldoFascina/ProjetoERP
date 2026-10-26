@@ -1,0 +1,196 @@
+<%- include('../partials/head') %>
+
+<%
+  const currentUser = typeof user !== 'undefined' ? user : null;
+  const currentFilters = typeof filters !== 'undefined' && filters ? filters : {};
+  const people = Array.isArray(clients) ? clients : [];
+  const canManageClients = currentUser && ['ADMIN', 'COORDENADOR'].includes(currentUser.role);
+  const isAdmin = currentUser && currentUser.role === 'ADMIN';
+
+  const formatHours = (value) => `${Number(value || 0).toFixed(2)}h`;
+  const formatCurrency = (value) =>
+    Number(value || 0).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+%>
+
+<header class="page-header">
+  <div>
+    <span class="module">Cadastros</span>
+    <h1>Clientes e fornecedores</h1>
+    <p>Cadastro único de pessoas e relacionamentos comerciais.</p>
+  </div>
+
+  <% if (canManageClients) { %>
+    <a class="button" href="/clients/new">+ Nova pessoa</a>
+  <% } %>
+</header>
+
+<form
+  class="card filters partner-filters"
+  method="get"
+  action="/clients"
+  aria-label="Filtros de clientes e fornecedores"
+>
+  <label>
+    Pessoa
+    <input
+      name="q"
+      value="<%= currentFilters.q || '' %>"
+      placeholder="Nome, fantasia ou documento"
+      autocomplete="off"
+    >
+  </label>
+
+  <label>
+    Tipo
+    <select name="partner_type">
+      <option value="">Todos</option>
+      <option value="CLIENTE" <%= currentFilters.partner_type === 'CLIENTE' ? 'selected' : '' %>>
+        Cliente
+      </option>
+      <option value="FORNECEDOR" <%= currentFilters.partner_type === 'FORNECEDOR' ? 'selected' : '' %>>
+        Fornecedor
+      </option>
+      <option value="AMBOS" <%= currentFilters.partner_type === 'AMBOS' ? 'selected' : '' %>>
+        Ambos
+      </option>
+    </select>
+  </label>
+
+  <label>
+    Status
+    <select name="status">
+      <option value="">Todos</option>
+      <option value="ATIVO" <%= currentFilters.status === 'ATIVO' ? 'selected' : '' %>>
+        Ativo
+      </option>
+      <option value="INATIVO" <%= currentFilters.status === 'INATIVO' ? 'selected' : '' %>>
+        Inativo
+      </option>
+    </select>
+  </label>
+
+  <div class="filter-actions">
+    <button type="submit">Filtrar</button>
+    <a class="small-button secondary" href="/clients">Limpar</a>
+  </div>
+</form>
+
+<section class="card" aria-labelledby="partners-title">
+  <div class="section-heading">
+    <div>
+      <h2 id="partners-title">Pessoas cadastradas</h2>
+      <p><%= people.length %> registro(s) encontrado(s).</p>
+    </div>
+  </div>
+
+  <div class="table">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Razão social</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Fantasia</th>
+          <th scope="col">CNPJ/CPF</th>
+          <th scope="col">Contato</th>
+          <th scope="col">Cidade/UF</th>
+          <th scope="col">Contrato</th>
+          <th scope="col">Consumidas</th>
+          <th scope="col">Saldo</th>
+          <th scope="col">Valor/hora</th>
+          <th scope="col">Situação</th>
+          <th scope="col">Ações</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% people.forEach((person) => { %>
+          <%
+            const partnerType = person.partner_type || 'CLIENTE';
+            const hasServiceContract = partnerType !== 'FORNECEDOR';
+            const location = [person.city, person.state].filter(Boolean).join('/') || '-';
+          %>
+
+          <tr>
+            <td>
+              <strong><%= person.corporate_name %></strong>
+              <% if (person.email) { %>
+                <br>
+                <small><%= person.email %></small>
+              <% } %>
+            </td>
+
+            <td>
+              <span class="pill"><%= partnerType %></span>
+            </td>
+
+            <td><%= person.trade_name || '-' %></td>
+            <td><%= person.document || '-' %></td>
+
+            <td>
+              <%= person.contact_name || '-' %>
+              <% if (person.phone) { %>
+                <br>
+                <small><%= person.phone %></small>
+              <% } %>
+            </td>
+
+            <td><%= location %></td>
+            <td><%= hasServiceContract ? formatHours(person.contract_hours) : '-' %></td>
+            <td><%= hasServiceContract ? formatHours(person.used_hours) : '-' %></td>
+
+            <td>
+              <strong><%= hasServiceContract ? formatHours(person.balance_hours) : '-' %></strong>
+            </td>
+
+            <td><%= hasServiceContract ? formatCurrency(person.hourly_rate) : '-' %></td>
+
+            <td>
+              <span class="pill <%= person.active ? '' : 'inactive' %>">
+                <%= person.active ? 'Ativo' : 'Inativo' %>
+              </span>
+            </td>
+
+            <td>
+              <div class="actions">
+                <% if (canManageClients) { %>
+                  <a class="small-button" href="/clients/<%= person.id %>/edit">
+                    Editar
+                  </a>
+                <% } %>
+
+                <% if (isAdmin) { %>
+                  <form
+                    method="post"
+                    action="/clients/<%= person.id %>/toggle"
+                    onsubmit="return confirm(`<%= person.active ? 'Inativar' : 'Ativar' %> este cadastro?`)"
+                  >
+                    <button class="secondary" type="submit">
+                      <%= person.active ? 'Inativar' : 'Ativar' %>
+                    </button>
+                  </form>
+                <% } %>
+
+                <% if (!canManageClients) { %>
+                  <span class="muted">Somente consulta</span>
+                <% } %>
+              </div>
+            </td>
+          </tr>
+        <% }) %>
+
+        <% if (!people.length) { %>
+          <tr>
+            <td colspan="12" class="empty-state">
+              Nenhum cadastro encontrado para os filtros informados.
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('../partials/foot') %>

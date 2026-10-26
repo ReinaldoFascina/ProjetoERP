@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>
+        <%= typeof pageTitle !=="undefined" ? pageTitle : activeModule.name %>
+    </title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/nfse-module.css">
+    <link rel="stylesheet" href="/v24-rm.css">
+    <script src="/menu.js" defer></script>
+    <script src="/rm-movement.js" defer></script>
+</head>
+
+<body data-module="<%= activeModule.key %>">
+    <% const moduleIcons={ technical: "AT" , stock: "ES" , finance: "FI" , fiscal: "FS" , production: "MD" ,
+        patrimonio: "PT" , manutencao: "MN" , empr: "EM" , expimpo: "EX" , }; const currentUser=typeof user
+        !=="undefined" ? user : null; const isAdmin=currentUser?.role==="ADMIN" ; const
+        isCoordinator=currentUser?.role==="COORDENADOR" ; const isClient=currentUser?.role==="CLIENTE" ; const
+        canManage=Boolean(isAdmin || isCoordinator); const canUseFinance=Boolean(canManage || isClient); const
+        canUseStock=Boolean(canManage || isClient); %>
+
+        <button id="mobileMenuButton" class="mobile-menu-button" type="button" aria-label="Abrir menu"
+            aria-controls="sidebar" aria-expanded="false">
+            <span></span><span></span><span></span>
+        </button>
+
+        <div id="menuOverlay" class="menu-overlay" hidden></div>
+
+        <div class="shell">
+            <aside id="sidebar" class="sidebar" aria-label="Menu do módulo">
+                <div class="sidebar-header">
+                    <a class="brand" href="<%= activeModule.home %>">
+                        <span class="brand-icon">
+                            <%= moduleIcons[activeModule.key] || "MD" %>
+                        </span>
+                        <span class="brand-text">
+                            <strong>
+                                <%= activeModule.shortName %>
+                            </strong>
+                            <small>RESistemas</small>
+                        </span>
+                    </a>
+                    <button id="collapseMenuButton" class="collapse-menu-button" type="button"
+                        aria-label="Recolher menu" aria-expanded="true">‹</button>
+                </div>
+
+                <a class="module-switcher" href="/modules">
+                    <span>▦</span>
+                    <span class="nav-label">Trocar módulo</span>
+                </a>
+
+                <nav class="sidebar-nav">
+                    <a class="nav-link" href="/stock-management/dashboard" data-path="/stock-management/dashboard">
+                        <span class="nav-icon">⌂</span><span class="nav-label">Dashboard de estoque</span>
+                    </a>
+
+                    <div class="nav-group">
+                        <button class="submenu-toggle" type="button" aria-expanded="false">
+                            <span class="nav-icon">▤</span><span class="nav-label">Movimentos</span><span
+                                class="submenu-arrow">⌄</span>
+                        </button>
+                        <div class="submenu">
+                            <a href="/stock-management/movements" data-path="/stock-management/movements">Todos os
+                                movimentos</a>
+                            <% if (canManage) { %><a href="/stock-management/movements/new"
+                                    data-path="/stock-management/movements/new">Novo
+                                    movimento</a>
+                                <% } %>
+                                    <a href="/stock-management/movements?group=compra"
+                                        data-path="/stock-management/movements">Compras</a>
+                                    <a href="/stock-management/movements?group=venda"
+                                        data-path="/stock-management/movements">Vendas</a>
+                                    <a href="/stock-management/movements?group=transferencia"
+                                        data-path="/stock-management/movements">Transferências</a>
+                                    <a href="/stock-management/movements?group=devolucao"
+                                        data-path="/stock-management/movements">Devoluções</a>
+                                    <a href="/stock-management/movements?group=ajuste"
+                                        data-path="/stock-management/movements">Ajustes</a>
+                                    <a href="/stock-management/movements?group=inventario"
+                                        data-path="/stock-management/movements">Inventários</a>
+                                    <a href="/stock-management/movements?status=RASCUNHO"
+                                        data-path="/stock-management/movements">Movimentos
+                                        pendentes</a>
+                                    <a href="/stock-management/movements?status=CONFIRMADO"
+                                        data-path="/stock-management/movements">Movimentos confirmados</a>
+                        </div>
+                    </div>
+
+                    <div class="nav-group">
+                        <button class="submenu-toggle" type="button" aria-expanded="false">
+                            <span class="nav-icon">▦</span><span class="nav-label">Estoque</span><span
+                                class="submenu-arrow">⌄</span>
+                        </button>
+                        <div class="submenu">
+                            <a href="/stock-management/stock" data-path="/stock-management/stock">Posição de estoque</a>
+                            <a href="/stock-management/stock/ledger" data-path="/stock-management/stock/ledger">Extrato
+                                de estoque</a>
+                            <a href="/stock-management/warehouses" data-path="/stock-management/warehouses">Locais de
+                                estoque</a>
+                            <a href="/stock-management/reservations"
+                                data-path="/stock-management/reservations">Reservas</a>
+                            <a href="/stock-management/inventory"
+                                data-path="/stock-management/inventory">Inventários</a>
+                            <a href="/stock-management/transfers"
+                                data-path="/stock-management/transfers">Transferências</a>
+                            <a href="/stock-management/adjustments"
+                                data-path="/stock-management/adjustments">Ajustes</a>
+                            <a href="/stock-management/average-cost" data-path="/stock-management/average-cost">Custo
+                                médio</a>
+                        </div>
+                    </div>
+
+                    <div class="nav-group">
+                        <button class="submenu-toggle" type="button" aria-expanded="false">
+                            <span class="nav-icon">N</span><span class="nav-label">Documentos eletrônicos</span><span
+                                class="submenu-arrow">⌄</span>
+                        </button>
+                        <div class="submenu">
+                            <a href="/stock-management/nfe" data-path="/stock-management/nfe">Central de NF-e</a>
+                            <a href="/stock-management/nfe?status=EM_PREPARACAO" data-path="/stock-management/nfe">NF-e
+                                em preparação</a>
+                            <a href="/stock-management/nfe?status=EM_FILA" data-path="/stock-management/nfe">NF-e em
+                                fila</a>
+                            <a href="/stock-management/nfe?status=AUTORIZADA" data-path="/stock-management/nfe">NF-e
+                                autorizadas</a>
+                            <a href="/stock-management/nfe?status=REJEITADA" data-path="/stock-management/nfe">NF-e
+                                rejeitadas</a>
+                            <a href="/stock-management/nfe?status=CANCELADA" data-path="/stock-management/nfe">NF-e
+                                canceladas</a>
+                            <% if (canManage) { %>
+                                <a href="/stock-management/nfe/inutilizations"
+                                    data-path="/stock-management/nfe/inutilizations">Inutilizações</a>
+                                <a href="/stock-management/nfe/certificate"
+                                    data-path="/stock-management/nfe/certificate">Certificado
+                                    digital</a>
+                                <% } %>
+                        </div>
+                    </div>
+
+                    <div class="nav-group">
+                        <button class="submenu-toggle" type="button" aria-expanded="false">
+                            <span class="nav-icon">◉</span><span class="nav-label">Cadastros</span><span
+                                class="submenu-arrow">⌄</span>
+                        </button>
+                        <div class="submenu">
+                            <a href="/catalog" data-path="/catalog">Produtos e serviços</a>
+                            <a href="/clients" data-path="/clients">Clientes e fornecedores</a>
+                            <a href="/stock-management/natures" data-path="/stock-management/natures">Naturezas de
+                                operação</a>
+                            <a href="/stock-management/taxes" data-path="/stock-management/taxes">Tributos</a>
+                            <a href="/stock-management/tax-rules" data-path="/stock-management/tax-rules">Regras
+                                tributárias</a>
+                            <a href="/stock-management/income-natures"
+                                data-path="/stock-management/income-natures">Naturezas de
+                                rendimento</a>
+                            <a href="/stock-management/warehouses" data-path="/stock-management/warehouses">Locais de
+                                estoque</a>
+                        </div>
+                        <div class="nav-group">
+                            <button class="submenu-toggle" type="button" aria-expanded="false">
+                                <span class="nav-icon">⚙</span><span class="nav-label">Parametrização</span><span
+                                    class="submenu-arrow">⌄</span>
+                            </button>
+                            <div class="submenu">
+                                <a href="/stock-management/movement-types"
+                                    data-path="/stock-management/movement-types">Tipos de movimento</a>
+                                <a href="/stock-management/movement-types?configure=true"
+                                    data-path="/stock-management/movement-types">Assistente de parametrização</a>
+                                <a href="/stock-management/movement-type-taxes"
+                                    data-path="/stock-management/movement-type-taxes">Tributos por tipo</a>
+                                <a href="/stock-management/movement-type-relations"
+                                    data-path="/stock-management/movement-type-relations">Relacionamento de
+                                    movimentos</a>
+                                <a href="/stock-management/financial-rules"
+                                    data-path="/stock-management/financial-rules">Regras financeiras</a>
+                                <a href="/stock-management/fiscal-rules"
+                                    data-path="/stock-management/fiscal-rules">Regras fiscais</a>
+                                <a href="/stock-management/accounting-events"
+                                    data-path="/stock-management/accounting-events">Eventos contábeis</a>
+                                <a href="/stock-management/retention-rules"
+                                    data-path="/stock-management/retention-rules">Regras de retenção</a>
+                                <a href="/stock-management/nfe/settings"
+                                    data-path="/stock-management/nfe/settings">Parâmetros de NF-e</a>
+                            </div>
+                        </div>
+
+                        <div class="nav-group">
+                            <button class="submenu-toggle" type="button" aria-expanded="false">
+                                <span class="nav-icon">▶</span><span class="nav-label">Processos</span><span
+                                    class="submenu-arrow">⌄</span>
+                            </button>
+                            <div class="submenu">
+                                <a href="/stock-management/processes/queue"
+                                    data-path="/stock-management/processes/queue">Fila de processamento</a>
+                                <a href="/stock-management/processes/stock"
+                                    data-path="/stock-management/processes/stock">Processar estoque</a>
+                                <a href="/stock-management/processes/financial"
+                                    data-path="/stock-management/processes/financial">Gerar financeiro</a>
+                                <a href="/stock-management/processes/fiscal"
+                                    data-path="/stock-management/processes/fiscal">Gerar escrituração</a>
+                                <a href="/stock-management/processes/accounting"
+                                    data-path="/stock-management/processes/accounting">Contabilizar movimentos</a>
+                                <a href="/stock-management/processes/retentions"
+                                    data-path="/stock-management/processes/retentions">Calcular retenções</a>
+                                <a href="/stock-management/processes/nfe"
+                                    data-path="/stock-management/processes/nfe">Gerar e transmitir NF-e</a>
+                                <a href="/stock-management/processes/reprocess"
+                                    data-path="/stock-management/processes/reprocess">Reprocessar erros</a>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+
+                <div class="sidebar-user">
+                    <div class="user-avatar">
+                        <%= currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : "U" %>
+                    </div>
+                    <div class="user-details">
+                        <strong>
+                            <%= currentUser?.name || "" %>
+                        </strong>
+                        <small>
+                            <%= currentUser?.role || "" %>
+                        </small>
+                    </div>
+                    <form method="post" action="/logout">
+                        <button class="logout-button" type="submit" title="Sair">↪</button>
+                    </form>
+                </div>
+            </aside>
+
+            <main class="main-content">
+                <% const person=typeof client !=='undefined' && client ? client : {}; const
+                    currentType=person.partner_type || 'CLIENTE' ; const screenError=typeof formError !=='undefined' ?
+                    formError : ( typeof error !=='undefined' ? error : '' ); const formAction=typeof action
+                    !=='undefined' ? action : '/clients' ; const isEditing=Boolean(person.id); %>
+
+
+                    <% if (screenError) { %>
+                        <div class="alert">
+                            <%= screenError %>
+                        </div>
+                        <% } %>
+                            <header class="page-header">
+                                <div>
+                                    <h1>
+                                        <%= pageTitle %>
+                                    </h1>
+                                    <p>Cadastro único para clientes, fornecedores ou ambos.</p>
+                                </div>
+                                <a class="small-button" href="/clients">Voltar</a>
+                            </header>
+                            <form class="card form partner-form" method="post" action="<%= action %>">
+                                <h2>Classificação</h2>
+                                <div class="form-grid">
+                                    <label>
+                                        Relacionamento *
+                                        <select name="partner_type" id="partnerType" required>
+                                            <option value="CLIENTE" <%=currentType==='CLIENTE' ? 'selected' : '' %>>
+                                                Cliente
+                                            </option>
+                                            <option value="FORNECEDOR" <%=currentType==='FORNECEDOR' ? 'selected' : ''
+                                                %>>
+                                                Fornecedor
+                                            </option>
+                                            <option value="AMBOS" <%=currentType==='AMBOS' ? 'selected' : '' %>>
+                                                Cliente e fornecedor
+                                            </option>
+                                        </select>
+                                    </label>
+                                    <label class="check">
+                                        <input type="checkbox" name="active" <%=!person || person.active !==false
+                                            ? 'checked' : '' %>
+                                        >
+                                        Cadastro ativo
+                                    </label>
+                                </div>
+                                <h2>Identificação</h2>
+                                <div class="form-grid">
+                                    <label>
+                                        Razão social/Nome *
+                                        <input name="corporate_name"
+                                            value="<%= person ? person.corporate_name || '' : '' %>" required>
+                                    </label>
+                                    <label>
+                                        Fantasia/Apelido<input name="trade_name"
+                                            value="<%= person ? person.trade_name || '' : '' %>">
+                                    </label>
+                                    <label>
+                                        CNPJ/CPF <input name="document"
+                                            value="<%= person ? person.document || '' : '' %>">
+                                    </label>
+                                    <label>
+                                        E-mail <input type="email" name="email"
+                                            value="<%= person ? person.email || '' : '' %>">
+                                    </label>
+                                    <label>
+                                        Telefone <input name="phone" value="<%= person ? person.phone || '' : '' %>">
+                                    </label>
+                                    <label>
+                                        Contato <input name="contact_name"
+                                            value="<%= person ? person.contact_name || '' : '' %>">
+                                    </label>
+                                </div>
+                                <h2>Endereço</h2>
+                                <div class="form-grid">
+                                    <label>
+                                        CEP <input name="postal_code"
+                                            value="<%= person ? person.postal_code || '' : '' %>">
+                                    </label>
+                                    <label class="span-2">
+                                        Endereço <input name="address"
+                                            value="<%= person ? person.address || '' : '' %>">
+                                    </label>
+                                    <label>
+                                        Número <input name="address_number"
+                                            value="<%= person ? person.address_number || '' : '' %>">
+                                    </label>
+                                    <label>
+                                        Complemento <input name="address_complement"
+                                            value="<%= person ? person.address_complement || '' : '' %>">
+                                    </label>
+                                    <label>
+                                        Bairro <input name="district"
+                                            value="<%= person ? person.district || '' : '' %>">
+                                    </label>
+                                    <label>
+                                        Cidade <input name="city" value="<%= person ? person.city || '' : '' %>">
+                                    </label>
+                                    <label>
+                                        UF <input name="state" maxlength="2"
+                                            value="<%= person ? person.state || '' : '' %>">
+                                    </label>
+                                </div>
+                                <section id="customerFields">
+                                    <h2>Dados de serviços do cliente</h2>
+                                    <div class="form-grid">
+                                        <label>
+                                            Horas contratadas <input type="number" step="0.01" min="0"
+                                                name="contract_hours"
+                                                value="<%= person ? person.contract_hours || 0 : 0 %>">
+                                        </label>
+                                        <label>
+                                            Horas consumidas <input type="number" step="0.01" min="0" name="used_hours"
+                                                value="<%= person ? person.used_hours || 0 : 0 %>">
+                                        </label>
+
+                                        <label>
+                                            Valor por hora <input type="number" step="0.01" min="0" name="hourly_rate"
+                                                value="<%= person ? person.hourly_rate || 0 : 0 %>">
+                                        </label>
+                                    </div>
+                                </section>
+                                <label>
+                                    Observações <textarea name="notes"
+                                        rows="4"><%= person ? person.notes || '' : '' %></textarea>
+                                </label>
+                                <div class="form-actions">
+                                    <a class="small-button secondary" href="/clients">Cancelar</a>
+                                    <button type="submit">Salvar cadastro</button>
+                                </div>
+                            </form>
+                            <script>
+                                (() => {
+                                    const typeField = document.getElementById('partnerType');
+                                    const customerFields = document.getElementById('customerFields');
+
+                                    function updateCustomerFields() {
+                                        customerFields.hidden = typeField.value === 'FORNECEDOR';
+                                    }
+
+                                    typeField.addEventListener('change', updateCustomerFields);
+                                    updateCustomerFields();
+                                })();
+                            </script>
+            </main>
+        </div>
+</body>
+
+</html>

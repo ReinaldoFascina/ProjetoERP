@@ -1,0 +1,431 @@
+<%- include('../partials/head') %>
+
+  <% const accountingEntry=typeof entry !=="undefined" && entry ? entry : {}; const entryLines=typeof lines
+    !=="undefined" && Array.isArray(lines) ? lines : []; const entryTotals=typeof totals !=="undefined" && totals ?
+    totals : { debit: 0, credit: 0, difference: 0, balanced: false, }; const formatCurrency=(value)=>
+    Number(value || 0).toLocaleString(
+    "pt-BR",
+    {
+    style: "currency",
+    currency: "BRL",
+    }
+    );
+
+    const formatDate = (value) => {
+    if (!value) {
+    return "-";
+    }
+
+    return new Date(
+    value
+    ).toLocaleDateString(
+    "pt-BR",
+    {
+    timeZone: "UTC",
+    }
+    );
+    };
+
+    const formatDateTime = (value) => {
+    if (!value) {
+    return "-";
+    }
+
+    return new Date(
+    value
+    ).toLocaleString(
+    "pt-BR"
+    );
+    };
+
+    const sourceLabels = {
+    CT: "Contabilidade",
+    ES: "Estoque",
+    FI: "Financeiro",
+    FS: "Fiscal",
+    AT: "Atendimento técnico",
+    MANUAL: "Lançamento manual",
+    };
+    %>
+
+    <header class="page-header">
+      <div>
+        <span class="module">
+          CT · Escrituração contábil
+        </span>
+
+        <h1>
+          Lançamento
+          <%= accountingEntry.entry_number %>
+        </h1>
+
+        <p>
+          <%= accountingEntry.history %>
+        </p>
+      </div>
+
+      <div class="actions">
+        <a class="small-button secondary" href="/accounting/entries">
+          Voltar
+        </a>
+      </div>
+    </header>
+
+    <section class="movement-master card">
+      <div>
+        <span>Número</span>
+        <strong>
+          <%= accountingEntry.entry_number %>
+        </strong>
+      </div>
+
+      <div>
+        <span>Data</span>
+        <strong>
+          <%= formatDate( accountingEntry.entry_date ) %>
+        </strong>
+      </div>
+
+      <div>
+        <span>Livro</span>
+        <strong>
+          <%= accountingEntry.book_code %>
+            -
+            <%= accountingEntry.book_name %>
+        </strong>
+      </div>
+
+      <div>
+        <span>Status</span>
+        <strong>
+          <span class="pill status-<%= String(
+          accountingEntry.status || ""
+        ).toLowerCase() %>">
+            <%= accountingEntry.status %>
+          </span>
+        </strong>
+      </div>
+
+      <div>
+        <span>Débitos</span>
+        <strong>
+          <%= formatCurrency( entryTotals.debit ) %>
+        </strong>
+      </div>
+
+      <div>
+        <span>Créditos</span>
+        <strong>
+          <%= formatCurrency( entryTotals.credit ) %>
+        </strong>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-heading">
+        <div>
+          <h2>Informações do lançamento</h2>
+          <p>
+            Origem, escrituração, livro e
+            responsáveis pelo lançamento.
+          </p>
+        </div>
+      </div>
+
+      <div class="form-grid accounting-summary">
+        <div class="field-view">
+          <span>Módulo de origem</span>
+          <strong>
+            <%= sourceLabels[ accountingEntry.source_module ] || accountingEntry.source_module || "-" %>
+          </strong>
+        </div>
+
+        <div class="field-view">
+          <span>ID de origem</span>
+          <strong>
+            <%= accountingEntry.source_id || "-" %>
+          </strong>
+        </div>
+
+        <div class="field-view">
+          <span>Tipo do livro</span>
+          <strong>
+            <%= accountingEntry.book_type || "-" %>
+          </strong>
+        </div>
+
+        <div class="field-view">
+          <span>Número do livro</span>
+          <strong>
+            <%= accountingEntry.book_number || "-" %>
+          </strong>
+        </div>
+
+        <div class="field-view">
+          <span>Período do livro</span>
+          <strong>
+            <%= formatDate( accountingEntry.period_end ) %>
+          </strong>
+        </div>
+
+        <div class="field-view">
+          <span>Situação do livro</span>
+          <strong>
+            <%= accountingEntry.book_status || "-" %>
+          </strong>
+        </div>
+
+        <div class="field-view">
+          <span>Criado por</span>
+          <strong>
+            <%= accountingEntry.created_by_name || "-" %>
+          </strong>
+        </div>
+
+        <div class="field-view">
+          <span>Contabilizado por</span>
+          <strong>
+            <%= accountingEntry.posted_by_name || "-" %>
+          </strong>
+        </div>
+
+        <div class="field-view">
+          <span>Criação</span>
+          <strong>
+            <%= formatDateTime( accountingEntry.created_at ) %>
+          </strong>
+        </div>
+
+        <div class="field-view">
+          <span>Contabilização</span>
+          <strong>
+            <%= formatDateTime( accountingEntry.posted_at ) %>
+          </strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-heading">
+        <div>
+          <h2>Partidas contábeis</h2>
+
+          <p>
+            Contas, centros de custo,
+            participantes e documentos.
+          </p>
+        </div>
+
+        <span class="pill <%= entryTotals.balanced
+        ? ""
+        : " inactive" %>"
+          >
+          <%= entryTotals.balanced ? "Lançamento balanceado" : "Lançamento desbalanceado" %>
+        </span>
+      </div>
+
+      <div class="table">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Seq.</th>
+              <th scope="col">Conta contábil</th>
+              <th scope="col">Conta referencial</th>
+              <th scope="col">Centro de custo</th>
+              <th scope="col">Participante</th>
+              <th scope="col">Documento</th>
+              <th scope="col">Histórico</th>
+              <th scope="col">Débito</th>
+              <th scope="col">Crédito</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <% entryLines.forEach((line)=> { %>
+              <tr>
+                <td>
+                  <%= line.sequence %>
+                </td>
+
+                <td>
+                  <strong>
+                    <%= line.account_code %>
+                  </strong>
+
+                  <br>
+
+                  <small>
+                    <%= line.account_name %>
+                  </small>
+
+                  <br>
+
+                  <small>
+                    <%= line.account_type %>
+                      ·
+                      <%= line.account_nature %>
+                  </small>
+                </td>
+
+                <td>
+                  <% if ( line.reference_account_code ) { %>
+                    <strong>
+                      <%= line.reference_account_code %>
+                    </strong>
+
+                    <br>
+
+                    <small>
+                      <%= line.reference_account_name %>
+                    </small>
+
+                    <br>
+
+                    <small>
+                      <%= line.reference_institution %>
+                        ·
+                        <%= line.reference_layout %>
+                    </small>
+                    <% } else { %>
+                      <span class="muted">
+                        Sem vínculo
+                      </span>
+                      <% } %>
+                </td>
+
+                <td>
+                  <% if (line.cost_center_code) { %>
+                    <strong>
+                      <%= line.cost_center_code %>
+                    </strong>
+
+                    <br>
+
+                    <small>
+                      <%= line.cost_center_name %>
+                    </small>
+                    <% } else { %>
+                      <span class="muted">
+                        Não informado
+                      </span>
+                      <% } %>
+                </td>
+
+                <td>
+                  <% if (line.participant_name) { %>
+                    <strong>
+                      <%= line.participant_name %>
+                    </strong>
+
+                    <br>
+
+                    <small>
+                      <%= line.participant_document || "" %>
+                    </small>
+                    <% } else { %>
+                      <span class="muted">
+                        Não informado
+                      </span>
+                      <% } %>
+                </td>
+
+                <td>
+                  <%= line.document_number || "-" %>
+                </td>
+
+                <td>
+                  <%= line.history_complement || accountingEntry.history %>
+                </td>
+
+                <td class="number">
+                  <%= Number(line.debit || 0)> 0
+                    ? formatCurrency(line.debit)
+                    : "-" %>
+                </td>
+
+                <td class="number">
+                  <%= Number(line.credit || 0)> 0
+                    ? formatCurrency(line.credit)
+                    : "-" %>
+                </td>
+              </tr>
+              <% }) %>
+
+                <% if (!entryLines.length) { %>
+                  <tr>
+                    <td colspan="9" class="empty-state">
+                      Este lançamento ainda não
+                      possui partidas contábeis.
+                    </td>
+                  </tr>
+                  <% } %>
+          </tbody>
+
+          <tfoot>
+            <tr>
+              <th colspan="7">
+                Totais
+              </th>
+
+              <th class="number">
+                <%= formatCurrency( entryTotals.debit ) %>
+              </th>
+
+              <th class="number">
+                <%= formatCurrency( entryTotals.credit ) %>
+              </th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+    <section class="card accounting-balance">
+      <div class="section-heading">
+        <div>
+          <h2>Validação do lançamento</h2>
+
+          <p>
+            Conferência entre o total de
+            débitos e o total de créditos.
+          </p>
+        </div>
+      </div>
+
+      <div class="movement-master">
+        <div>
+          <span>Total de débitos</span>
+          <strong>
+            <%= formatCurrency( entryTotals.debit ) %>
+          </strong>
+        </div>
+
+        <div>
+          <span>Total de créditos</span>
+          <strong>
+            <%= formatCurrency( entryTotals.credit ) %>
+          </strong>
+        </div>
+
+        <div>
+          <span>Diferença</span>
+          <strong>
+            <%= formatCurrency( entryTotals.difference ) %>
+          </strong>
+        </div>
+
+        <div>
+          <span>Resultado</span>
+          <strong>
+            <span class="pill <%= entryTotals.balanced
+            ? ""
+            : " inactive" %>"
+              >
+              <%= entryTotals.balanced ? "Balanceado" : "Desbalanceado" %>
+            </span>
+          </strong>
+        </div>
+      </div>
+    </section>
+
+    <%- include('../partials/foot') %>

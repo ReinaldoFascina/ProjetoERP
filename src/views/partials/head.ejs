@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= typeof pageTitle !== "undefined" ? pageTitle : activeModule.name %></title>
+
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/nfse-module.css">
+  <link rel="stylesheet" href="/v24-rm.css">
+  <link rel="stylesheet" href="/ai-assistant.css">
+  <link rel="stylesheet" href="/technical-crm.css">
+  <link rel="stylesheet" href="/technical-crm.jsscript">
+  
+  <script src="/ai-assistant.js" defer></script>
+
+  <script src="/menu.js" defer></script>
+  <script src="/rm-movement.js" defer></script>
+</head>
+
+<body data-module="<%= activeModule.key %>">
+  <%
+    const moduleIcons = {
+      technical: "AT",
+      stock: "ES",
+      finance: "FI",
+      fiscal: "FS",
+      accounting: "CT",
+      production: "MR",
+      patrimonio: "PT",
+      assets: "PT",
+      maintenance: "MN",
+      empr: "EM",
+      expimpo: "EX",
+    };
+
+    const currentUser =
+      typeof user !== "undefined"
+        ? user
+        : null;
+
+    const isAdmin =
+      currentUser?.role === "ADMIN";
+
+    const isCoordinator =
+      currentUser?.role === "COORDENADOR";
+
+    const isClient =
+      currentUser?.role === "CLIENTE";
+
+    const canManage =
+      Boolean(isAdmin || isCoordinator);
+
+    const canUseFinance =
+      Boolean(canManage || isClient);
+
+    const canUseStock =
+      Boolean(canManage || isClient);
+  %>
+
+  <button
+    id="mobileMenuButton"
+    class="mobile-menu-button"
+    type="button"
+    aria-label="Abrir menu"
+    aria-controls="sidebar"
+    aria-expanded="false"
+  >
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+
+  <div
+    id="menuOverlay"
+    class="menu-overlay"
+    hidden
+  ></div>
+
+  <div class="shell">
+    <aside
+      id="sidebar"
+      class="sidebar"
+      aria-label="Menu do módulo"
+    >
+      <div class="sidebar-header">
+        <a
+          class="brand"
+          href="<%= activeModule.home %>"
+        >
+          <span class="brand-icon">
+            <%= moduleIcons[activeModule.key] || "MD" %>
+          </span>
+
+          <span class="brand-text">
+            <strong><%= activeModule.shortName %></strong>
+            <small>RESistemas</small>
+          </span>
+        </a>
+
+        <button
+          id="collapseMenuButton"
+          class="collapse-menu-button"
+          type="button"
+          aria-label="Recolher menu"
+          aria-expanded="true"
+        >
+          ‹
+        </button>
+      </div>
+
+      <a
+        class="module-switcher"
+        href="/modules"
+      >
+        <span>▦</span>
+        <span class="nav-label">Trocar módulo</span>
+      </a>
+
+      <nav class="sidebar-nav">
+        <% if (activeModule.key === "technical") { %>
+          <a
+            class="nav-link"
+            href="/dashboardTickets"
+            data-path="/dashboardTickets"
+          >
+            <span class="nav-icon">⌂</span>
+            <span class="nav-label">Dashboard técnico</span>
+          </a>
+
+          <div class="nav-group">
+            <button
+              class="submenu-toggle"
+              type="button"
+              aria-expanded="false"
+            >
+              <span class="nav-icon">▣</span>
+              <span class="nav-label">Chamados</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/tickets" data-path="/tickets">Consultar chamados</a>
+              <a href="/tickets/new" data-path="/tickets/new">Novo chamado</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button
+              class="submenu-toggle"
+              type="button"
+              aria-expanded="false"
+            >
+              <span class="nav-icon">◉</span>
+              <span class="nav-label">Cadastros técnicos</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <% if (canManage) { %>
+                <a href="/technicians" data-path="/technicians">Técnicos</a>
+              <% } %>
+
+              <% if (isAdmin) { %>
+                <a href="/technicians/new" data-path="/technicians/new">Novo técnico</a>
+                <a href="/users" data-path="/users">Usuários de acesso</a>
+                <a href="/users/new" data-path="/users/new">Novo usuário</a>
+              <% } %>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button
+              class="submenu-toggle"
+              type="button"
+              aria-expanded="false"
+            >
+              <span class="nav-icon">◷</span>
+              <span class="nav-label">Atendimentos</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/agenda" data-path="/agenda">Agenda</a>
+
+              <% if (canManage) { %>
+                <a href="/agenda/new" data-path="/agenda/new">Novo agendamento</a>
+              <% } %>
+
+              <a href="/rats" data-path="/rats">RAT e horas</a>
+              <a href="/rats/new" data-path="/rats/new">Novo RAT</a>
+
+              <% if (canManage) { %>
+                <a href="/rats/billing" data-path="/rats/billing">RATs para faturamento</a>
+              <% } %>
+            </div>
+          </div>
+        <% } %>
+        <% if (activeModule.key === "technical") { %>
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false"><span class="nav-icon">CRM</span><span class="nav-label">CRM Técnico</span><span class="submenu-arrow">⌄</span></button>
+              <div class="submenu">
+                <a href="/technical-crm" data-path="/technical-crm">Visão geral</a>
+                <a href="/technical-crm/tickets" data-path="/technical-crm/tickets">Atendimentos</a>
+                <a href="/technical-crm/tickets/new" data-path="/technical-crm/tickets/new">Novo atendimento</a>
+                <% if (canManage) { %>
+                  <a href="/technical-crm/groups" data-path="/technical-crm/groups">Grupos técnicos e roleta</a>
+                  <a href="/technical-crm/settings/notifications" data-path="/technical-crm/settings/notifications">Notificações por etapa</a>
+                <% } %>
+              </div>
+          </div>
+        <% } %>
+
+        <% if (activeModule.key === "stock" && canUseStock) { %>
+          <a
+            class="nav-link"
+            href="/stock-management/dashboard"
+            data-path="/stock-management/dashboard"
+          >
+            <span class="nav-icon">⌂</span>
+            <span class="nav-label">Dashboard de estoque</span>
+          </a>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▤</span>
+              <span class="nav-label">Movimentos</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/stock-management/movements" data-path="/stock-management/movements">Todos os movimentos</a>
+
+              <% if (canManage) { %>
+                <a href="/stock-management/movements/new" data-path="/stock-management/movements/new">Novo movimento</a>
+              <% } %>
+
+              <a href="/stock-management/movements?group=compra" data-path="/stock-management/movements">Compras</a>
+              <a href="/stock-management/movements?group=venda" data-path="/stock-management/movements">Vendas</a>
+              <a href="/stock-management/movements?group=transferencia" data-path="/stock-management/movements">Transferências</a>
+              <a href="/stock-management/movements?group=devolucao" data-path="/stock-management/movements">Devoluções</a>
+              <a href="/stock-management/movements?group=ajuste" data-path="/stock-management/movements">Ajustes</a>
+              <a href="/stock-management/movements?group=inventario" data-path="/stock-management/movements">Inventários</a>
+              <a href="/stock-management/movements?status=RASCUNHO" data-path="/stock-management/movements">Movimentos pendentes</a>
+              <a href="/stock-management/movements?status=CONFIRMADO" data-path="/stock-management/movements">Movimentos confirmados</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▦</span>
+              <span class="nav-label">Estoque</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/stock-management/stock" data-path="/stock-management/stock">Posição de estoque</a>
+              <a href="/stock-management/stock/ledger" data-path="/stock-management/stock/ledger">Extrato de estoque</a>
+              <a href="/stock-management/warehouses" data-path="/stock-management/warehouses">Locais de estoque</a>
+              <a href="/stock-management/reservations" data-path="/stock-management/reservations">Reservas</a>
+              <a href="/stock-management/inventory" data-path="/stock-management/inventory">Inventários</a>
+              <a href="/stock-management/transfers" data-path="/stock-management/transfers">Transferências</a>
+              <a href="/stock-management/adjustments" data-path="/stock-management/adjustments">Ajustes</a>
+              <a href="/stock-management/average-cost" data-path="/stock-management/average-cost">Custo médio</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">N</span>
+              <span class="nav-label">Documentos eletrônicos</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/stock-management/nfe" data-path="/stock-management/nfe">Central de NF-e</a>
+              <a href="/stock-management/nfe?status=EM_PREPARACAO" data-path="/stock-management/nfe">NF-e em preparação</a>
+              <a href="/stock-management/nfe?status=EM_FILA" data-path="/stock-management/nfe">NF-e em fila</a>
+              <a href="/stock-management/nfe?status=AUTORIZADA" data-path="/stock-management/nfe">NF-e autorizadas</a>
+              <a href="/stock-management/nfe?status=REJEITADA" data-path="/stock-management/nfe">NF-e rejeitadas</a>
+              <a href="/stock-management/nfe?status=CANCELADA" data-path="/stock-management/nfe">NF-e canceladas</a>
+
+              <% if (canManage) { %>
+                <a href="/stock-management/nfe/inutilizations" data-path="/stock-management/nfe/inutilizations">Inutilizações</a>
+                <a href="/stock-management/nfe/certificate" data-path="/stock-management/nfe/certificate">Certificado digital</a>
+              <% } %>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">◉</span>
+              <span class="nav-label">Cadastros</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/catalog" data-path="/catalog">Produtos e serviços</a>
+              <a href="/clients" data-path="/clients">Clientes e fornecedores</a>
+              <a href="/stock-management/natures" data-path="/stock-management/natures">Naturezas de operação</a>
+              <a href="/stock-management/taxes" data-path="/stock-management/taxes">Tributos</a>
+              <a href="/stock-management/tax-rules" data-path="/stock-management/tax-rules">Regras tributárias</a>
+              <a href="/stock-management/income-natures" data-path="/stock-management/income-natures">Naturezas de rendimento</a>
+              <a href="/stock-management/warehouses" data-path="/stock-management/warehouses">Locais de estoque</a>
+            </div>
+          </div>
+
+          <% if (canManage) { %>
+            <div class="nav-group">
+              <button class="submenu-toggle" type="button" aria-expanded="false">
+                <span class="nav-icon">⚙</span>
+                <span class="nav-label">Parametrização</span>
+                <span class="submenu-arrow">⌄</span>
+              </button>
+
+              <div class="submenu">
+                <a href="/stock-management/movement-types" data-path="/stock-management/movement-types">Tipos de movimento</a>
+                <a href="/stock-management-wizard/movement-types?configure=true" data-path="/stock-management-wizard/movement-types">Assistente de parametrização</a>
+                <a href="/stock-management/movement-type-taxes" data-path="/stock-management/movement-type-taxes">Tributos por tipo</a>
+                <a href="/stock-management/movement-type-relations" data-path="/stock-management/movement-type-relations">Relacionamento de movimentos</a>
+                <a href="/stock-management/financial-rules" data-path="/stock-management/financial-rules">Regras financeiras</a>
+                <a href="/stock-management/fiscal-rules" data-path="/stock-management/fiscal-rules">Regras fiscais</a>
+                <a href="/stock-management/accounting-events" data-path="/stock-management/accounting-events">Eventos contábeis</a>
+                <a href="/stock-management/retention-rules" data-path="/stock-management/retention-rules">Regras de retenção</a>
+                <a href="/stock-management/nfe/settings" data-path="/stock-management/nfe/settings">Parâmetros de NF-e</a>
+              </div>
+            </div>
+
+            <div class="nav-group">
+              <button class="submenu-toggle" type="button" aria-expanded="false">
+                <span class="nav-icon">▶</span>
+                <span class="nav-label">Processos</span>
+                <span class="submenu-arrow">⌄</span>
+              </button>
+
+              <div class="submenu">
+                <a href="/stock-management/processes/queue" data-path="/stock-management/processes/queue">Fila de processamento</a>
+                <a href="/stock-management/processes/stock" data-path="/stock-management/processes/stock">Processar estoque</a>
+                <a href="/stock-management/processes/financial" data-path="/stock-management/processes/financial">Gerar financeiro</a>
+                <a href="/stock-management/processes/fiscal" data-path="/stock-management/processes/fiscal">Gerar escrituração</a>
+                <a href="/stock-management/processes/accounting" data-path="/stock-management/processes/accounting">Contabilizar movimentos</a>
+                <a href="/stock-management/processes/retentions" data-path="/stock-management/processes/retentions">Calcular retenções</a>
+                <a href="/stock-management/processes/nfe" data-path="/stock-management/processes/nfe">Gerar e transmitir NF-e</a>
+                <a href="/stock-management/processes/reprocess" data-path="/stock-management/processes/reprocess">Reprocessar erros</a>
+              </div>
+            </div>
+          <% } %>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">⌕</span>
+              <span class="nav-label">Consultas</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/stock-management/queries/traceability" data-path="/stock-management/queries/traceability">Rastreabilidade</a>
+              <a href="/stock-management/queries/taxes" data-path="/stock-management/queries/taxes">Tributos dos movimentos</a>
+              <a href="/stock-management/queries/retentions" data-path="/stock-management/queries/retentions">Retenções</a>
+              <a href="/stock-management/queries/financial" data-path="/stock-management/queries/financial">Integração financeira</a>
+              <a href="/stock-management/queries/accounting" data-path="/stock-management/queries/accounting">Integração contábil</a>
+              <a href="/stock-management/queries/nfe-history" data-path="/stock-management/queries/nfe-history">Histórico de NF-e</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▥</span>
+              <span class="nav-label">Relatórios</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/stock-management/reports/movements" data-path="/stock-management/reports/movements">Movimentos por período</a>
+              <a href="/stock-management/reports/purchases" data-path="/stock-management/reports/purchases">Compras</a>
+              <a href="/stock-management/reports/sales" data-path="/stock-management/reports/sales">Vendas</a>
+              <a href="/stock-management/reports/stock-position" data-path="/stock-management/reports/stock-position">Posição de estoque</a>
+              <a href="/stock-management/reports/average-cost" data-path="/stock-management/reports/average-cost">Custo médio</a>
+              <a href="/stock-management/reports/taxes" data-path="/stock-management/reports/taxes">Tributos</a>
+              <a href="/stock-management/reports/retentions" data-path="/stock-management/reports/retentions">Retenções</a>
+              <a href="/stock-management/reports/accounting" data-path="/stock-management/reports/accounting">Contabilização</a>
+              <a href="/stock-management/reports/nfe" data-path="/stock-management/reports/nfe">NF-e emitidas</a>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (activeModule.key === "finance" && canUseFinance) { %>
+          <a class="nav-link" href="/finance" data-path="/finance">
+            <span class="nav-icon">⌂</span>
+            <span class="nav-label">Dashboard financeiro</span>
+          </a>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">$</span>
+              <span class="nav-label">Financeiro</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/finance" data-path="/finance">Contas a pagar/receber</a>
+
+              <% if (canManage) { %>
+                <a href="/finance/new" data-path="/finance/new">Novo título</a>
+              <% } %>
+
+              <a href="/cash-accounts" data-path="/cash-accounts">Contas e caixas</a>
+              <a href="/cash-extract" data-path="/cash-extract">Extrato de caixa</a>
+
+              <% if (canManage) { %>
+                <a href="/reconciliation" data-path="/reconciliation">Conciliação bancária</a>
+              <% } %>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▥</span>
+              <span class="nav-label">Relatórios</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/reports/financial" data-path="/reports/financial">Financeiro</a>
+              <a href="/reports/billing" data-path="/reports/billing">Faturamento</a>
+            </div>
+          </div>
+
+          <% if (canManage) { %>
+            <div class="nav-group">
+              <button class="submenu-toggle" type="button" aria-expanded="false">
+                <span class="nav-icon">⚙</span>
+                <span class="nav-label">Configurações</span>
+                <span class="submenu-arrow">⌄</span>
+              </button>
+
+              <div class="submenu">
+                <a href="/payment-methods" data-path="/payment-methods">Formas de pagamento</a>
+                <a href="/taxes" data-path="/taxes">Tributos e impostos</a>
+              </div>
+            </div>
+          <% } %>
+        <% } %>
+
+        <% if (activeModule.key === "accounting" && canManage) { %>
+          <a class="nav-link" href="/accounting" data-path="/accounting">
+            <span class="nav-icon">⌂</span>
+            <span class="nav-label">Dashboard contábil</span>
+          </a>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">◉</span>
+              <span class="nav-label">Cadastros contábeis</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/accounting/accounts" data-path="/accounting/accounts">Plano de contas</a>
+              <a href="/accounting/cost-centers" data-path="/accounting/cost-centers">Centros de custo</a>
+              <a href="/accounting/reference-accounts" data-path="/accounting/reference-accounts">Contas referenciais</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▤</span>
+              <span class="nav-label">Escrituração</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/accounting/entries" data-path="/accounting/entries">Lançamentos contábeis</a>
+              <a href="/accounting/books" data-path="/accounting/books">Livros contábeis</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">S</span>
+              <span class="nav-label">SPED</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/accounting/sped" data-path="/accounting/sped">SPED Contábil</a>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (activeModule.key === "fiscal" && canManage) { %>
+          <a class="nav-link" href="/fiscal" data-path="/fiscal">
+            <span class="nav-icon">⌂</span>
+            <span class="nav-label">Dashboard fiscal</span>
+          </a>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">F</span>
+              <span class="nav-label">Fiscal</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/nfse" data-path="/nfse">Emissão de NFS-e</a>
+              <a href="/nfse-national" data-path="/nfse-national">Transmissão nacional</a>
+              <a href="/fiscal/books" data-path="/fiscal/books">Livros fiscais</a>
+              <a href="/fiscal/periods" data-path="/fiscal/periods">Períodos de apuração</a>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (activeModule.key === "production" && canManage) { %>
+          <a class="nav-link" href="/production" data-path="/production">
+            <span class="nav-icon">⌂</span>
+            <span class="nav-label">Dashboard de produção</span>
+          </a>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▦</span>
+              <span class="nav-label">Engenharia de produto</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/production/structures" data-path="/production/structures">Estruturas de produto</a>
+              <a href="/production/routings" data-path="/production/routings">Roteiros e tempos</a>
+              <a href="/catalog" data-path="/catalog">Produtos</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">⚙</span>
+              <span class="nav-label">Recursos produtivos</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/production/machines" data-path="/production/machines">Máquinas</a>
+              <a href="/production/capacity" data-path="/production/capacity">Capacidade produtiva</a>
+              <a href="/production/productivity" data-path="/production/productivity">Produtividade de máquinas</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▤</span>
+              <span class="nav-label">Produção</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/production/orders" data-path="/production/orders">Ordens de produção</a>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (["patrimonio", "assets"].includes(activeModule.key) && canManage) { %>
+          <a class="nav-link" href="/assets" data-path="/assets">
+            <span class="nav-icon">⌂</span>
+            <span class="nav-label">Dashboard patrimonial</span>
+          </a>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▦</span>
+              <span class="nav-label">Patrimônio</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/assets" data-path="/assets">Bens patrimoniais</a>
+              <a href="/assets/new" data-path="/assets/new">Novo patrimônio</a>
+              <a href="/assets/categories" data-path="/assets/categories">Categorias</a>
+              <a href="/assets/responsibles" data-path="/assets/responsibles">Responsáveis</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">⚙</span>
+              <span class="nav-label">Processos</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/assets/purchase-rules" data-path="/assets/purchase-rules">Compra automática</a>
+              <a href="/assets/depreciation" data-path="/assets/depreciation">Depreciação e contabilização</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▥</span>
+              <span class="nav-label">Relatórios</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/assets/reports/position" data-path="/assets/reports/position">Posição patrimonial</a>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (["manutencao", "maintenance"].includes(activeModule.key) && canManage) { %>
+          <a class="nav-link" href="/maintenance" data-path="/maintenance">
+            <span class="nav-icon">⌂</span>
+            <span class="nav-label">Dashboard de manutenção</span>
+          </a>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▤</span>
+              <span class="nav-label">Oficina</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/maintenance/orders" data-path="/maintenance/orders">Ordens de manutenção</a>
+              <a href="/maintenance/plans" data-path="/maintenance/plans">Planos preventivos</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">⚙</span>
+              <span class="nav-label">Cadastros</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/maintenance/assets" data-path="/maintenance/assets">Máquinas, veículos e bens</a>
+              <a href="/maintenance/service-types" data-path="/maintenance/service-types">Tipos de manutenção</a>
+              <a href="/catalog" data-path="/catalog">Peças e materiais</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▥</span>
+              <span class="nav-label">Relatórios</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/maintenance/reports/costs" data-path="/maintenance/reports/costs">Custos por bem</a>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (activeModule.key === "empr" && canManage) { %>
+          <a class="nav-link" href="/real-estate" data-path="/real-estate">
+            <span class="nav-icon">⌂</span>
+            <span class="nav-label">Dashboard de empreendimentos</span>
+          </a>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▦</span>
+              <span class="nav-label">Cadastros</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/real-estate/developments" data-path="/real-estate/developments">Empreendimentos e loteamentos</a>
+              <a href="/real-estate/units" data-path="/real-estate/units">Unidades e lotes</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">▤</span>
+              <span class="nav-label">Comercial</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/real-estate/quotes" data-path="/real-estate/quotes">Cotações</a>
+              <a href="/real-estate/sales" data-path="/real-estate/sales">Vendas</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">$</span>
+              <span class="nav-label">Financeiro</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/real-estate/receivables" data-path="/real-estate/receivables">Parcelas e pagamentos</a>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (activeModule.key === "expimpo" && canManage) { %>
+          <a class="nav-link" href="/comex" data-path="/comex">
+            <span class="nav-icon">⌂</span>
+            <span class="nav-label">Dashboard COMEX</span>
+          </a>
+
+          <div class="nav-group">
+            <button
+              class="submenu-toggle"
+              type="button"
+              aria-expanded="false"
+            >
+              <span class="nav-icon">▤</span>
+              <span class="nav-label">Operações</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/comex/processes" data-path="/comex/processes">Processos</a>
+              <a href="/comex/shipments" data-path="/comex/shipments">Embarques e cargas</a>
+              <a href="/comex/documents" data-path="/comex/documents">Documentos</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button
+              class="submenu-toggle"
+              type="button"
+              aria-expanded="false"
+            >
+              <span class="nav-icon">◉</span>
+              <span class="nav-label">Intervenientes</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/comex/partners" data-path="/comex/partners">
+                Armadores, despachantes e agentes
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button
+              class="submenu-toggle"
+              type="button"
+              aria-expanded="false"
+            >
+              <span class="nav-icon">$</span>
+              <span class="nav-label">Custos</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+
+            <div class="submenu">
+              <a href="/comex/costs" data-path="/comex/costs">Custos e landed cost</a>
+            </div>
+          </div>
+        <% } %>
+        <% if (activeModule.key === "expimpo" && canManage) { %>
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false">
+              <span class="nav-icon">D</span>
+              <span class="nav-label">DUIMP</span>
+              <span class="submenu-arrow">⌄</span>
+            </button>
+            <div class="submenu">
+              <a href="/comex/duimp" data-path="/comex/duimp">Declarações e obrigações</a>
+              <a href="/comex/importers" data-path="/comex/importers">Importadores por cliente</a>
+              <a href="/comex/catalog" data-path="/comex/catalog">Catálogo de produtos</a>
+              <a href="/comex/operators" data-path="/comex/operators">Operadores estrangeiros</a>
+            </div>
+          </div>
+        <% } %>
+      </nav>
+
+      <div class="sidebar-user">
+        <div class="user-avatar">
+          <%= currentUser?.name
+            ? currentUser.name.charAt(0).toUpperCase()
+            : "U" %>
+        </div>
+
+        <div class="user-details">
+          <strong><%= currentUser?.name || "" %></strong>
+          <small><%= currentUser?.role || "" %></small>
+        </div>
+
+        <form method="post" action="/logout">
+          <button
+            class="logout-button"
+            type="submit"
+            title="Sair"
+            aria-label="Sair"
+          >
+            ↪
+          </button>
+        </form>
+      </div>
+    </aside>
+
+    <main class="main-content">

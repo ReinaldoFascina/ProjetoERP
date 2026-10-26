@@ -1,0 +1,44 @@
+.nfse-metrics .metric-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.nfse-metrics .metric-link:hover {
+  transform: translateY(-2px);
+}
+
+.status-autorizada {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.status-cancelada {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.status-pendente {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.status-rejeitada {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.block {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+}
+
+.nfse-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 850px) {
+  .nfse-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

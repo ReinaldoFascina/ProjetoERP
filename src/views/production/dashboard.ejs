@@ -1,0 +1,5 @@
+<%- include('../partials/head') %>
+<header class="page-header"><div><span class="module">MR · Produção</span><h1>Gestão de Produção</h1><p>Estruturas, roteiros, capacidade, ordens e produtividade.</p></div></header>
+<section class="metrics"><div class="card">Máquinas<br><strong><%= summary.machines %></strong></div><div class="card">Ordens<br><strong><%= summary.orders %></strong></div><div class="card">Em produção<br><strong><%= summary.activeOrders %></strong></div><div class="card">Produzido 30 dias<br><strong><%= Number(summary.produced).toFixed(2) %></strong></div><div class="card">Rejeitado<br><strong><%= Number(summary.rejected).toFixed(2) %></strong></div></section>
+<section class="card"><h2>Acessos</h2><div class="actions"><a class="button" href="/production/machines">Máquinas</a><a class="button" href="/production/capacity">Capacidade</a><a class="button" href="/production/structures">Estruturas</a><a class="button" href="/production/routings">Roteiros e tempos</a><a class="button" href="/production/orders">Ordens</a><a class="button" href="/production/productivity">Produtividade</a></div></section>
+<%- include('../partials/foot') %>

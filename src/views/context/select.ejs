@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Selecionar empresa e filial</title>
+        <link rel="stylesheet" href="/style.css">
+    </head>
+    <body class="module-picker-page">
+        <main class="module-picker">
+            <header class="module-picker-header">
+                <div>
+                    <span class="eyebrow">Contexto de trabalho</span>
+                    <h1>Empresa e filial</h1>
+                    <p>Selecione a coligada e a filial que serão usadas nesta sessão.</p>
+                </div>
+            </header>
+            <section class="card">
+                <form class="form" method="post" action="/company-context">
+                    <label>
+                        Empresa / Filial
+                        <select name="context" required>
+                            <option value="">Selecione</option>
+                            <% contexts.forEach(c=>{ %>
+                                <option value="<%= c.company_id %>:<%= c.branch_id %>">
+                                    <%= c.company_code %> - <%= c.company_name %> | <%= c.branch_code %> - <%= c.branch_name %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </label>
+                    <button>Entrar no contexto</button>
+                </form>
+            </section>
+        </main>
+    </body>
+</html>

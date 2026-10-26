@@ -1,0 +1,154 @@
+import { Router } from 'express';
+import { db } from '../database/db.js';
+import { requireAuth, allow } from '../middleware/auth.js';
+
+export const clientsRouter = Router();
+const p = [requireAuth, allow('ADMIN', 'COORDENADOR')];
+
+// Clientes e fornecedores
+clientsRouter.get(
+            "/clients",
+            ...p,
+    async (req, res) => {
+        const { q = "", status = "", partner_type = "" } = req.query,
+            params = [],
+            where = [];
+        if (q) {
+            params.push(`%${q}%`);
+            where.push(
+                `(c.corporate_name ILIKE $${params.length} OR COALESCE(c.trade_name,'') ILIKE $${params.length} OR COALESCE(c.document,'') ILIKE $${params.length})`
+            );
+        }
+        if (status) {
+            params.push(status === "ATIVO");
+            where.push(`c.active=$${params.length}`);
+        }
+        if (partner_type) {
+            params.push(partner_type);
+            where.push(`c.partner_type=$${params.length}`);
+        }
+        const { rows } = await db.query(
+            `SELECT c.*,GREATEST(c.contract_hours-c.used_hours,0) balance_hours FROM clients c ${where.length ? "WHERE " + where.join(" AND ") : ""
+            } ORDER BY c.corporate_name`,
+            params
+        );
+        return res.render("clients/list.ejs", {
+            clients: rows,
+            filters: { q, status, partner_type },
+        });
+    }
+);
+
+clientsRouter.get("/clients/new", ...p, (req, res) =>
+    res.render("clients/form", {
+        client: null,
+        action: "/clients",
+        pageTitle: "Nova pessoa",
+    })
+);
+
+clientsRouter.post(
+    "/clients",
+    ...p,
+    async (req, res) => {
+        const b = req.body,
+            types = ["CLIENTE", "FORNECEDOR", "AMBOS"];
+        if (!types.includes(b.partner_type))
+            return res
+                .status(400)
+                .render("error", { message: "Tipo de relacionamento inválido." });
+        await db.query(
+            "INSERT INTO clients(corporate_name,trade_name,document,email,phone,contact_name,address,address_number,address_complement,district,city,state,postal_code,contract_hours,used_hours,hourly_rate,notes,active,partner_type,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW())",
+            [
+                b.corporate_name,
+                b.trade_name || null,
+                b.document || null,
+                b.email || null,
+                b.phone || null,
+                b.contact_name || null,
+                b.address || null,
+                b.address_number || null,
+                b.address_complement || null,
+                b.district || null,
+                b.city || null,
+                b.state?.toUpperCase() || null,
+                b.postal_code || null,
+                Number(b.contract_hours || 0),
+                Number(b.used_hours || 0),
+                Number(b.hourly_rate || 0),
+                b.notes || null,
+                b.active === "on",
+                b.partner_type,
+            ]
+        );
+        return res.redirect("/clients");
+    }
+);
+
+clientsRouter.get(
+    "/clients/:id/edit",
+    ...p,
+    async (req, res) => {
+        const { rows } = await db.query("SELECT * FROM clients WHERE id=$1", [
+            req.params.id,
+        ]);
+        if (!rows[0])
+            return res.status(404).render("error", { message: "Pessoa não encontrada" });
+        return res.render("clients/form", {
+            client: rows[0],
+            action: `/clients/${req.params.id}`,
+            pageTitle: "Editar pessoa",
+        });
+    }
+);
+
+clientsRouter.post(
+    "/clients/:id",
+    ...p,
+    async (req, res) => {
+        const b = req.body,
+            types = ["CLIENTE", "FORNECEDOR", "AMBOS"];
+        if (!types.includes(b.partner_type))
+            return res
+                .status(400)
+                .render("error", { message: "Tipo de relacionamento inválido." });
+        await db.query(
+            "UPDATE clients SET corporate_name=$1,trade_name=$2,document=$3,email=$4,phone=$5,contact_name=$6,address=$7,address_number=$8,address_complement=$9,district=$10,city=$11,state=$12,postal_code=$13,contract_hours=$14,used_hours=$15,hourly_rate=$16,notes=$17,active=$18,partner_type=$19,updated_at=NOW() WHERE id=$20",
+            [
+                b.corporate_name,
+                b.trade_name || null,
+                b.document || null,
+                b.email || null,
+                b.phone || null,
+                b.contact_name || null,
+                b.address || null,
+                b.address_number || null,
+                b.address_complement || null,
+                b.district || null,
+                b.city || null,
+                b.state?.toUpperCase() || null,
+                b.postal_code || null,
+                Number(b.contract_hours || 0),
+                Number(b.used_hours || 0),
+                Number(b.hourly_rate || 0),
+                b.notes || null,
+                b.active === "on",
+                b.partner_type,
+                req.params.id,
+            ]
+        );
+        return res.redirect("/clients");
+    }
+);
+
+clientsRouter.post(
+    "/clients/:id/toggle",
+    ...p,
+    async (req, res) => {
+        await db.query(
+            "UPDATE clients SET active=NOT active,updated_at=NOW() WHERE id=$1",
+            [req.params.id]
+        );
+        return res.redirect("/clients");
+    }
+);

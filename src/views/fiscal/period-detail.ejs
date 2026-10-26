@@ -1,0 +1,116 @@
+<%- include('../partials/head') %>
+    <header>
+        <div>
+            <h1>
+                <%=period.tax_code%> - <%=period.tax_name%>
+            </h1>
+            <p>
+                <%=period.status%> · vence em <%=new
+                        Date(period.due_date).toLocaleDateString('pt-BR',{timeZone:'UTC'})%>
+            </p>
+        </div>
+        <a class="secondary button" href="/fiscal/periods">Voltar</a>
+    </header>
+    <%if(message){%>
+        <div class="alert success">
+            <%=message%>
+        </div>
+        <%}%>
+            <%if(error){%>
+                <div class="alert">
+                    <%=error%>
+                </div>
+                <%}%>
+                    <section class="metrics">
+                        <div class="card">Débitos
+                            <br><b>R$ <%=Number(period.debit_amount).toFixed(2)%></b>
+                        </div>
+                        <div class="card">Créditos
+                            <br><b>R$ <%=Number(period.credit_amount).toFixed(2)%></b>
+                        </div>
+                        <div class="card">Retenções
+                            <br><b>R$ <%=Number(period.retained_amount).toFixed(2)%></b>
+                        </div>
+                        <div class="card">A pagar
+                            <br><b>R$ <%=Number(period.payable_amount).toFixed(2)%></b>
+                        </div>
+                    </section>
+                    <%if(period.status!=='FECHADO'){%>
+                        <form class="card form" method="post" action="/fiscal/periods/<%=period.id%>/entries">
+                            <h2>Lançamento manual</h2>
+                            <div class="grid">
+                                <label>Tipo
+                                    <select name="entry_type">
+                                        <option>DEBITO</option>
+                                        <option>CREDITO</option>
+                                        <option>RETENCAO</option>
+                                        <option>AJUSTE</option>
+                                    </select>
+                                </label>
+                                <label>Data
+                                    <input type="date" name="entry_date" required>
+                                </label>
+                                <label>Descrição
+                                    <input name="description" required>
+                                </label>
+                                <label>Base
+                                    <input type="number" step="0.01" name="tax_base" value="0">
+                                </label>
+                                <label>Alíquota
+                                    <input type="number" step="0.000001" name="rate" value="0">
+                                </label>
+                                <label>Valor
+                                    <input type="number" step="0.01" name="amount" required>
+                                </label>
+                            </div>
+                            <button>Incluir</button>
+                        </form>
+                        <div class="actions">
+                            <form method="post" action="/fiscal/periods/<%=period.id%>/calculate">
+                                <button>Calcular apuração</button>
+                            </form>
+                            <%if(period.status==='CALCULADO'){%>
+                                <form method="post" action="/fiscal/periods/<%=period.id%>/close">
+                                    <button class="danger">Fechar período</button>
+                                </form>
+                                <%}%>
+                        </div>
+                        <%}%>
+                            <section class="card">
+                                <div class="table">
+                                    <table>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Tipo</th>
+                                            <th>Descrição</th>
+                                            <th>Base</th>
+                                            <th>Alíquota</th>
+                                            <th>Valor</th>
+                                        </tr>
+                                        <%entries.forEach(e=>{%>
+                                            <tr>
+                                                <td>
+                                                    <%=new
+                                                        Date(e.entry_date).toLocaleDateString('pt-BR',{timeZone:'UTC'})%>
+                                                </td>
+                                                <td>
+                                                    <%=e.entry_type%>
+                                                </td>
+                                                <td>
+                                                    <%=e.description%>
+                                                </td>
+                                                <td>R$ <%=Number(e.tax_base).toFixed(2)%>
+                                                </td>
+                                                <td>
+                                                    <%=Number(e.rate).toFixed(4)%>%
+                                                </td>
+                                                <td>R$ <%=Number(e.amount).toFixed(2)%>
+                                                </td>
+                                            </tr>
+                                            <%})%>
+                                    </table>
+                                </div>
+
+                            </section>
+
+                            <%= include('../partials/foot') %>

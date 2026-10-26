@@ -1,0 +1,51 @@
+<%- include('../partials/head') %>
+<header class="page-header">
+    <div>
+        <span class="module">PT · Patrimônio</span>
+        <h1>Gestão de Patrimônio</h1>
+        <p>Cadastro, responsabilidade, depreciação e contabilização dos bens.</p>
+    </div>
+    <a class="button" href="/assets/new">+ Novo patrimônio</a>
+</header>
+<section class="metrics">
+    <div class="card">Bens<br><strong><%=summary.total%></strong></div>
+    <div class="card">Aquisição<br><strong>R$ <%=Number(summary.acquisition).toFixed(2)%></strong></div>
+    <div class="card">Depreciação<br><strong>R$ <%=Number(summary.depreciation).toFixed(2)%></strong></div>
+    <div class="card">Valor contábil<br><strong>R$ <%=Number(summary.book_value).toFixed(2)%></strong></div>
+</section>
+<section class="card">
+    <div class="actions">
+        <a class="secondary" href="/assets/categories">Categorias</a>
+        <a class="inactive" href="/assets/responsibles">Responsáveis</a>
+        <a class="warning" href="/assets/purchase-rules">Regras de compra</a>
+        <a class="confirmado" href="/assets/depreciation">Depreciação</a>
+        <a class="blocado" href="/assets/reports/position">Relatórios</a>
+    </div>
+    <table>
+        <tr>
+            <th>Número</th>
+            <th>Descrição</th>
+            <th>Categoria</th>
+            <th>Responsável</th>
+            <th>Centro de custo</th>
+            <th>Aquisição</th>
+            <th>Depreciação</th>
+            <th>Valor contábil</th>
+            <th></th>
+        </tr>
+        <% assets.forEach(a => { %>
+        <tr>
+            <td><%=a.asset_number%></td>
+            <td><%=a.description%></td>
+            <td><%=a.category_name%></td>
+            <td><%=a.responsible_name || '-' %></td>
+            <td><%=a.cost_center_code || '-' %></td>
+            <td>R$ <%=Number(a.acquisition_cost).toFixed(2)%></td>
+            <td>R$ <%=Number(a.accumulated_depreciation).toFixed(2)%></td>
+            <td>R$ <%=Number(a.book_value).toFixed(2)%></td>
+            <td><a class="secondary" href="/assets/<%=a.id%>">Detalhes</a></td>
+        </tr>
+        <% }); %>
+    </table>
+</section>
+<%- include('../partials/foot') %>

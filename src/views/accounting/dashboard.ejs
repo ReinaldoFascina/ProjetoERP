@@ -1,0 +1,5 @@
+<%- include('../partials/head') %>
+<header><div><span class="module">CT · Contabilidade</span><h1>Gestão Contábil</h1><p>Plano de contas, centros de custo, livros, lançamentos e SPED.</p></div></header>
+<section class="metrics"><div class="card">Contas<br><b><%=summary.accounts%></b></div><div class="card">Centros de custo<br><b><%=summary.costCenters%></b></div><div class="card">Livros<br><b><%=summary.books%></b></div><div class="card">Lançamentos<br><b><%=summary.entries%></b></div><div class="card">Movimento<br><b>R$ <%=Number(summary.debit).toFixed(2)%></b></div></section>
+<section class="card"><h2>Acessos</h2><div class="actions"><a class="button" href="/accounting/accounts">Plano de contas</a><a class="button" href="/accounting/cost-centers">Centros de custo</a><a class="button" href="/accounting/reference-accounts">Contas referenciais</a><a class="button" href="/accounting/books">Livros</a><a class="button" href="/accounting/entries">Lançamentos</a><a class="button" href="/accounting/sped">SPED</a></div></section>
+<%- include('../partials/foot') %>

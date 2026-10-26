@@ -1,0 +1,1 @@
+import fs from'node:fs/promises';import{fileURLToPath}from'node:url';import{dirname,join}from'node:path';import{db}from'./db.js';const h=dirname(fileURLToPath(import.meta.url));try{await db.query(await fs.readFile(join(h,'sql','v27-movement-wizard-nfe.sql'),'utf8'));console.log('Versão 27 instalada.')}catch(e){console.error(e);process.exitCode=1}finally{await db.end()}

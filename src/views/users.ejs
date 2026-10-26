@@ -1,0 +1,14 @@
+<%- include('partials/head') %>
+<header>
+  <div><h1>Usuários de acesso</h1><p>Contas, perfis, clientes vinculados e situação de acesso.</p></div>
+  <a class="button" href="/users/new">+ Novo usuário</a>
+</header>
+<form class="card filters user-filters" method="get" action="/users">
+  <label>Usuário<input name="q" value="<%= filters.q %>" placeholder="Nome ou e-mail"></label>
+  <label>Perfil<select name="role"><option value="">Todos</option><% ['ADMIN','COORDENADOR','TECNICO','CLIENTE'].forEach(x=>{ %><option value="<%= x %>" <%= filters.role===x?'selected':'' %>><%= x %></option><% }) %></select></label>
+  <label>Status<select name="status"><option value="">Todos</option><option value="ATIVO" <%= filters.status==='ATIVO'?'selected':'' %>>Ativo</option><option value="INATIVO" <%= filters.status==='INATIVO'?'selected':'' %>>Inativo</option></select></label>
+  <label>Cliente<select name="client_id"><option value="">Todos</option><% clients.forEach(c=>{ %><option value="<%= c.id %>" <%= String(filters.client_id)===String(c.id)?'selected':'' %>><%= c.corporate_name %></option><% }) %></select></label>
+  <div class="filter-actions"><button>Filtrar</button><a class="small-button secondary" href="/users">Limpar</a></div>
+</form>
+<section class="card"><div class="table"><table><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Cliente</th><th>Telefone</th><th>Último acesso</th><th>Status</th><th>Ações</th></tr><% users.forEach(x=>{ %><tr><td><strong><%= x.name %></strong></td><td><%= x.email %></td><td><span class="pill"><%= x.role %></span></td><td><%= x.corporate_name||'-' %></td><td><%= x.phone||'-' %></td><td><%= x.last_login_at?new Date(x.last_login_at).toLocaleString('pt-BR'):'Nunca' %></td><td><span class="pill <%= x.active?'success':'inactive' %>"><%= x.active?'Ativo':'Inativo' %></span></td><td><div class="actions"><a class="small-button" href="/users/<%= x.id %>/edit">Editar</a><% if(x.id!==user.id){ %><form method="post" action="/users/<%= x.id %>/toggle"><button class="secondary"><%= x.active?'Inativar':'Ativar' %></button></form><% } %></div></td></tr><% }) %></table></div><% if(!users.length){ %><p>Nenhum usuário localizado.</p><% } %></section>
+<%- include('partials/foot') %>

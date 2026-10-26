@@ -1,0 +1,182 @@
+<%- include('partials/head') %>
+
+<header>
+  <div>
+    <h1><%= pageTitle %></h1>
+    <p>Vincule cliente, técnico, período e, opcionalmente, um chamado</p>
+  </div>
+
+  <a class="small-button" href="/agenda">Voltar</a>
+</header>
+
+<% if (error) { %>
+  <div class="alert">
+    <%= error %>
+  </div>
+<% } %>
+
+<form class="card form client-form" method="post" action="<%= action %>">
+  <h2>Atendimento</h2>
+
+  <div class="form-grid">
+    <label>
+      Cliente *
+
+      <select name="client_id" required>
+        <option value="">Selecione</option>
+
+        <% clients.forEach(c => { %>
+          <option
+            value="<%= c.id %>"
+            <%= String(appointment?.client_id || '') === String(c.id) ? 'selected' : '' %>
+          >
+            <%= c.corporate_name %>
+          </option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      Técnico *
+
+      <select name="technician_id" required>
+        <option value="">Selecione</option>
+
+        <% techs.forEach(t => { %>
+          <option
+            value="<%= t.id %>"
+            <%= String(appointment?.technician_id || '') === String(t.id) ? 'selected' : '' %>
+          >
+            <%= t.name %>
+          </option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label class="span-2">
+      Título *
+
+      <input
+        name="title"
+        maxlength="200"
+        value="<%= appointment?.title || '' %>"
+        required
+      >
+    </label>
+
+    <label>
+      Tipo
+
+      <select name="service_type">
+        <% ['PRESENCIAL', 'REMOTO', 'HIBRIDO'].forEach(x => { %>
+          <option
+            value="<%= x %>"
+            <%= (appointment?.service_type || 'PRESENCIAL') === x ? 'selected' : '' %>
+          >
+            <%= x %>
+          </option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      Status
+
+      <select name="status">
+        <% ['AGENDADO', 'CONFIRMADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'CANCELADO'].forEach(x => { %>
+          <option
+            value="<%= x %>"
+            <%= (appointment?.status || 'AGENDADO') === x ? 'selected' : '' %>
+          >
+            <%= x %>
+          </option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      Início *
+
+      <input
+        type="datetime-local"
+        name="start_at"
+        value="<%= appointment?.start_at ? new Date(appointment.start_at).toISOString().slice(0,16) : '' %>"
+        required
+      >
+    </label>
+
+    <label>
+      Fim *
+
+      <input
+        type="datetime-local"
+        name="end_at"
+        value="<%= appointment?.end_at ? new Date(appointment.end_at).toISOString().slice(0,16) : '' %>"
+        required
+      >
+    </label>
+
+    <label class="span-2">
+      Chamado relacionado
+
+      <select name="ticket_id">
+        <option value="">Sem chamado</option>
+
+        <% tickets.forEach(t => { %>
+          <option
+            value="<%= t.id %>"
+            <%= String(appointment?.ticket_id || '') === String(t.id) ? 'selected' : '' %>
+          >
+            <%= t.number %> - <%= t.title %>
+          </option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label class="span-2">
+      Local ou link
+
+      <input
+        name="location"
+        maxlength="200"
+        value="<%= appointment?.location || '' %>"
+      >
+    </label>
+
+    <label>
+      Contato no cliente
+
+      <input
+        name="contact_name"
+        maxlength="150"
+        value="<%= appointment?.contact_name || '' %>"
+      >
+    </label>
+
+    <label>
+      Telefone do contato
+
+      <input
+        name="contact_phone"
+        maxlength="30"
+        value="<%= appointment?.contact_phone || '' %>"
+      >
+    </label>
+
+    <label class="span-2">
+      Observa' %></textarea>
+    </label>
+  </div>
+
+  <div class="form-actions">
+    <a class="small-button secondary" href="/agenda">
+      Cancelar
+    </a>
+
+    <button type="submit">
+      Salvar agendamento
+    </button>
+  </div>
+</form>
+
+<%- include('partials/foot') %>

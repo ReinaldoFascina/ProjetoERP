@@ -1,0 +1,26 @@
+<%- include('../partials/head') %>
+<header><h1>Grupos técnicos e roleta</h1></header>
+<form class="card form" method="post" action="/technical-crm/groups">
+  <div class="form-grid">
+    <label>Nome<input name="name" required></label>
+    <label>E-mail do grupo<input type="email" name="email"></label>
+    <label class="span-2">Descrição<textarea name="description"></textarea></label>
+    <label><input type="checkbox" name="roulette_enabled" value="1"> Ativar roleta</label>
+  </div>
+  <button>Salvar grupo</button>
+</form>
+<% rows.forEach(group => { %>
+<section class="card">
+  <h2><%= group.name %></h2>
+  <p><%= group.description || 'Sem descrição' %> · Roleta: <%= group.roulette_enabled ? 'Ativa' : 'Inativa' %></p>
+  <form method="post" action="/technical-crm/groups/<%= group.id %>/members">
+    <div class="form-grid">
+      <label>Técnico<select name="user_id"><% users.forEach(user => { %><option value="<%= user.id %>"><%= user.name %></option><% }) %></select></label>
+      <label>Peso<input type="number" min="1" name="roulette_weight" value="1"></label>
+      <label>Ordem<input type="number" min="1" name="roulette_order" value="1"></label>
+    </div>
+    <button>Adicionar técnico</button>
+  </form>
+</section>
+<% }) %>
+<%- include('../partials/foot') %>

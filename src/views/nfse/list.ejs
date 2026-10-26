@@ -1,0 +1,18 @@
+<%- include('../partials/head') %>
+<header><div><span class="module">Fiscal de serviços</span><h1>Emissão de NFS-e</h1><p>Somente faturamentos confirmados com valor de serviços no contexto atual.</p></div></header>
+<% if(message){ %><div class="alert success"><%= message %></div><% } %><% if(error){ %><div class="alert"><%= error %></div><% } %>
+<section class="metrics nfse-metrics">
+  <% ['AUTORIZADA','CANCELADA','PENDENTE','REJEITADA'].forEach(s=>{ %><a class="card metric-link" href="/nfse?status=<%= s %>"><span><%= s %></span><b><%= summary[s]||0 %></b></a><% }) %>
+</section>
+<form class="card filters" method="get" action="/nfse">
+  <label>Status<select name="status"><option value="">Todos</option><% ['AUTORIZADA','CANCELADA','PENDENTE','REJEITADA'].forEach(s=>{ %><option value="<%= s %>" <%= filters.status===s?'selected':'' %>><%= s %></option><% }) %></select></label>
+  <label>Emissão de<input type="date" name="date_from" value="<%= filters.date_from %>"></label>
+  <label>Emissão até<input type="date" name="date_to" value="<%= filters.date_to %>"></label>
+  <label>Busca<input name="q" value="<%= filters.q %>" placeholder="Movimento, cliente ou nota"></label>
+  <button>Filtrar</button><a class="button secondary" href="/nfse">Limpar</a>
+</form>
+<section class="card"><div class="table"><table><thead><tr><th>Faturamento</th><th>Cliente</th><th>Emissão</th><th>Serviços</th><th>NFS-e</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+<% if(!documents.length){ %><tr><td colspan="7">Nenhum faturamento de serviço encontrado.</td></tr><% } %>
+<% documents.forEach(d=>{ %><tr><td><strong><%= d.movement_number %></strong></td><td><%= d.corporate_name %><small class="block"><%= d.client_document||'' %></small></td><td><%= new Date(d.date_issued).toLocaleDateString('pt-BR',{timeZone:'UTC'}) %></td><td>R$ <%= Number(d.service_total).toFixed(2) %></td><td><%= d.document_number||'-' %></td><td><span class="pill status-<%= d.nfse_status.toLowerCase() %>"><%= d.nfse_status %></span></td><td><div class="actions"><% if(d.fiscal_document_id){ %><a class="small-button" href="/nfse/<%= d.fiscal_document_id %>">Detalhes</a><% } %><% if(['PENDENTE','REJEITADA'].includes(d.nfse_status)){ %><form method="post" action="/nfse/movements/<%= d.movement_id %>/issue"><button class="small-button"><%= d.fiscal_document_id?'Reprocessar':'Emitir' %></button></form><% } %></div></td></tr><% }) %>
+</tbody></table></div></section>
+<%- include('../partials/foot') %>

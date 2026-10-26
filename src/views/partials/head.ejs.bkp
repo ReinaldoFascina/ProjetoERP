@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>
+    <%= typeof pageTitle !=='undefined' ? pageTitle : activeModule.name %>
+  </title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/nfse-module.css">
+  <link rel="stylesheet" href="/v24-rm.css">
+  <script src="/menu.js" defer></script>
+  <script src="/rm-movement.js" defer></script>
+</head>
+
+<body data-module="<%= activeModule.key %>">
+  <button id="mobileMenuButton" class="mobile-menu-button" type="button" aria-label="Abrir menu" aria-controls="sidebar"
+    aria-expanded="false"><span></span><span></span><span></span></button>
+  <div id="menuOverlay" class="menu-overlay" hidden></div>
+  <div class="shell">
+    <aside id="sidebar" class="sidebar" aria-label="Menu do módulo">
+      <div class="sidebar-header">
+        <a class="brand" href="<%= activeModule.home %>">
+          <span class="brand-icon">
+            <%= activeModule.key==="technical" ? "AT" : activeModule.key==="finance" ? "FI" :
+              activeModule.key==="fiscal" ? "FS" : "MD" %>
+          </span>
+          <span class="brand-text"><strong>
+              <%= activeModule.shortName %>
+            </strong><small>RESistemas</small></span>
+        </a>
+        <button id="collapseMenuButton" class="collapse-menu-button" type="button" aria-label="Recolher menu"
+          aria-expanded="true">‹</button>
+      </div>
+
+      <a class="module-switcher" href="/modules"><span>▦</span><span class="nav-label">Trocar módulo</span></a>
+
+      <nav class="sidebar-nav">
+        <% if (activeModule.key==='technical' ) { %>
+          <a class="nav-link" href="/" data-path="/"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard
+              técnico</span></a>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false"><span class="nav-icon">▣</span><span
+                class="nav-label">Chamados</span><span class="submenu-arrow">⌄</span></button>
+            <div class="submenu"><a href="/tickets" data-path="/tickets">Consultar chamados</a><a href="/tickets/new"
+                data-path="/tickets/new">Novo chamado</a></div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false"><span class="nav-icon">◉</span><span
+                class="nav-label">Cadastros técnicos</span><span class="submenu-arrow">⌄</span></button>
+            <div class="submenu">
+              <% if (user && ['ADMIN','COORDENADOR'].includes(user.role)) { %><a href="/technicians"
+                  data-path="/technicians">Técnicos</a>
+                <% } %>
+                  <% if (user && user.role==='ADMIN' ) { %><a href="/technicians/new" data-path="/technicians/new">Novo
+                      técnico</a><a href="/users" data-path="/users">Usuários de acesso</a><a href="/users/new"
+                      data-path="/users/new">Novo usuário</a>
+                    <% } %>
+            </div>
+
+            <div class="submenu">
+              <a href="/clients" data-path="/clients">Clientes e fornecedores</a>
+            </div>
+          </div>
+
+          <div class="nav-group">
+            <button class="submenu-toggle" type="button" aria-expanded="false"><span class="nav-icon">◷</span><span
+                class="nav-label">Atendimentos</span><span class="submenu-arrow">⌄</span></button>
+            <div class="submenu"><a href="/agenda" data-path="/agenda">Agenda</a>
+              <% if(user&&['ADMIN','COORDENADOR'].includes(user.role)){ %><a href="/agenda/new"
+                  data-path="/agenda/new">Novo agendamento</a>
+                <% } %><a href="/rats" data-path="/rats">RAT e horas</a><a href="/rats/new" data-path="/rats/new">Novo
+                    RAT</a>
+                  <% if(user&&['ADMIN','COORDENADOR'].includes(user.role)){ %><a href="/rats/billing"
+                      data-path="/rats/billing">RATs para faturamento</a>
+                    <% } %>
+            </div>
+          </div>
+          <% } %>
+            <% if (activeModule.key==='finance' && user && ['ADMIN','COORDENADOR','CLIENTE'].includes(user.role)) { %>
+              <a class="nav-link" href="/finance" data-path="/finance">
+                <span class="nav-icon">⌂</span>
+                <span class="nav-label">Dashboard financeiro</span></a>
+              <div class="nav-group">
+                <button class="submenu-toggle" type="button" aria-expanded="false">
+                  <span class="nav-icon">$</span>
+                  <span class="nav-label">Financeiro</span>
+                  <span class="submenu-arrow">⌄</span>
+                </button>
+                <div class="submenu">
+                  <a href="/finance" data-path="/finance">Contas a pagar/receber</a>
+                  <a href="/finance/new" data-path="/finance/new">Novo título</a>
+                  <a href="/cash-accounts" data-path="/cash-accounts">Contas e caixas</a>
+                  <a href="/cash-extract" data-path="/cash-extract">Extrato de caixa</a>
+                  <a href="/reconciliation" data-path="/reconciliation">Conciliação bancária</a>
+                </div>
+              </div>
+              <div class="nav-group">
+                <button class="submenu-toggle" type="button" aria-expanded="false">
+                  <span class="nav-icon">▤</span>
+                  <span class="nav-label">Movimentos</span>
+                  <span class="submenu-arrow">⌄</span>
+                </button>
+                <div class="submenu">
+                  <a href="/billing" data-path="/billing">Faturamento</a>
+                  <a href="/purchases/new" data-path="/purchases/new">Entrada de compra</a>
+                  <a href="/catalog" data-path="/catalog">Produto</a>
+                </div>
+              </div>
+              <div class="nav-group">
+                <button class="submenu-toggle" type="button" aria-expanded="false">
+                  <span class="nav-icon">◉</span>
+                  <span class="nav-label">Cadastros financeiros
+                  </span>
+                  <span class="submenu-arrow">⌄</span>
+                </button>
+              </div>
+              <% } %>
+                <% if (activeModule.key==='finance' && user && ['ADMIN','COORDENADOR','CLIENTE'].includes(user.role)) {
+                  %>
+                  <div class="nav-group">
+                    <button class="submenu-toggle" type="button" aria-expanded="false">
+                      <span class="nav-icon">◉</span>
+                      <span class="nav-label">Relatórios</span>
+                      <span class="submenu-arrow">⌄</span>
+                    </button>
+                    <div class="submenu">
+                      <a href="/reports/financial" data-path="/reports/financial">Financeiro</a>
+                      <a href="/reports/billing" data-path="/reports/billing">Faturamento</a>
+                    </div>
+                  </div>
+                  <div class="nav-group">
+                    <button class="submenu-toggle" type="button" aria-expanded="false">
+                      <span class="nav-icon">◉</span>
+                      <span class="nav-label">Configurações</span>
+                      <span class="submenu-arrow">⌄</span>
+                    </button>
+                    <div class="submenu">
+                      <a href="/payment-methods" data-path="/payment-methods">Formas de pagamento</a>
+                      <a href="/taxes" data-path="/taxes">Tributos e impostos</a>
+                    </div>
+                  </div>
+                  <% } %>
+                    <% if (activeModule.key==='fiscal' && ['ADMIN','COORDENADOR'].includes(user.role)) { %>
+                      <a class="nav-link" href="/fiscal" data-path="/fiscal">
+                        <span class="nav-icon">⌂</span>
+                        <span class="nav-label">Dashboard fiscal</span>
+                      </a>
+                      <div class="nav-group">
+                        <button class="submenu-toggle" type="button" aria-expanded="false">
+                          <span class="nav-icon">F</span>
+                          <span class="nav-label">Fiscal</span>
+                          <span class="submenu-arrow">⌄</span>
+                        </button>
+                        <div class="submenu">
+
+                          <a href="/fiscal" data-path="/fiscal">Dashboard fiscal</a>
+                          <a href="/nfse" data-path="/nfse">Emissão de NFS-e</a>
+                          <a href="/nfse-national" data-path="/nfse-national">Transmissão nacional</a>
+                          <a href="/fiscal/books" data-path="/fiscal/books">Livros fiscais</a>
+                          <a href="/fiscal/periods" data-path="/fiscal/periods">Períodos de apuração</a>
+                        </div>
+                      </div>
+                      <% } %>
+
+      </nav>
+      <div class="sidebar-user">
+        <div class="user-avatar">
+          <%= user && user.name ? user.name.charAt(0).toUpperCase() : 'U' %>
+        </div>
+        <div class="user-details"><strong>
+            <%= user ? user.name : '' %>
+          </strong><small>
+            <%= user ? user.role : '' %>
+          </small></div>
+        <form method="post" action="/logout"><button class="logout-button" type="submit" title="Sair">↪</button></form>
+      </div>
+    </aside>
+    <main class="main-content">

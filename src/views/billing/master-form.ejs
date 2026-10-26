@@ -1,0 +1,411 @@
+<%- include('../partials/head') %>
+
+<%
+const record = typeof movement !== 'undefined' && movement ? movement : null;
+
+const dateValue = (value) =>
+  value
+    ? new Date(value).toLocaleDateString('en-CA', {
+        timeZone: 'UTC'
+      })
+    : '';
+%>
+
+<header class="rm-page-header">
+  <div>
+    <span class="rm-module">
+      Vendas e Faturamento
+    </span>
+
+    <h1>
+      <%= pageTitle %>
+    </h1>
+
+    <p>
+      Movimento de saída com cabeçalho, itens,
+      financeiro e informações complementares.
+    </p>
+  </div>
+
+  <div class="rm-toolbar">
+    <a
+      class="small-button secondary"
+      href="/billing"
+    >
+      Cancelar
+    </a>
+
+    <button
+      form="movementForm"
+      type="submit"
+    >
+      Salvar movimento
+    </button>
+  </div>
+</header>
+
+<% if (error) { %>
+  <div class="alert">
+    <%= error %>
+  </div>
+<% } %>
+
+<form
+  id="movementForm"
+  class="rm-movement"
+  method="post"
+  action="<%= action %>"
+>
+  <section class="card rm-identification">
+
+    <div class="rm-document-badge">
+      <span>Movimento</span>
+
+      <strong>
+        <%= record?.number || 'NOVO' %>
+      </strong>
+
+      <small>
+        <%= record?.status || 'EM DIGITAÇÃO' %>
+      </small>
+    </div>
+
+    <div class="form-grid rm-header-grid">
+
+      <label>
+        Cliente *
+
+        <select
+          name="client_id"
+          required
+        >
+          <option value="">
+            Selecione
+          </option>
+
+          <% clients.forEach(c => { %>
+            <option
+              value="<%= c.id %>"
+              <%= String(record?.client_id || '') === String(c.id)
+                ? 'selected'
+                : '' %>
+            >
+              <%= c.corporate_name %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Emissão *
+
+        <input
+          type="date"
+          name="date_issued"
+          value="<%= dateValue(record?.date_issued || new Date()) %>"
+          required
+        >
+      </label>
+
+      <label>
+        Competência *
+
+        <input
+          type="date"
+          name="competence"
+          value="<%= dateValue(record?.competence) %>"
+          required
+        >
+      </label>
+
+      <label>
+        Vencimento
+
+        <input
+          type="date"
+          name="due_date"
+          value="<%= dateValue(record?.due_date) %>"
+        >
+      </label>
+
+    </div>
+  </section>
+
+  <nav
+    class="rm-tabs"
+    aria-label="Seções do movimento"
+  >
+    <button
+      type="button"
+      class="active"
+      data-tab="items"
+    >
+      Itens
+    </button>
+
+    <button
+      type="button"
+      data-tab="financial"
+    >
+      Financeiro
+    </button>
+
+    <button
+      type="button"
+      data-tab="fiscal"
+    >
+      Fiscal
+    </button>
+
+    <button
+      type="button"
+      data-tab="additional"
+    >
+      Dados adicionais
+    </button>
+  </nav>
+
+  <section
+    class="card rm-tab-panel active"
+    data-panel="items"
+  >
+    <div class="section-heading">
+      <div>
+        <h2>Itens do movimento</h2>
+
+        <p>
+          O primeiro item é obrigatório para
+          gravar o movimento.
+        </p>
+      </div>
+
+      <a
+        class="small-button"
+        href="/catalog/new"
+        target="_blank"
+      >
+        Cadastrar item fiscal
+      </a>
+    </div>
+
+    <div class="rm-item-entry">
+
+      <label>
+        Produto/Serviço *
+
+        <select
+          name="catalog_item_id"
+          id="catalogItem"
+          <%= record ? '' : 'required' %>
+        >
+          <option value="">
+            Selecione o item
+          </option>
+
+          <% catalogItems.forEach(x => { %>
+            <option
+              value="<%= x.id %>"
+              data-code="<%= x.code %>"
+              data-description="<%= x.description %>"
+              data-unit="<%= x.unit %>"
+              data-price="<%= x.sale_price %>"
+              data-type="<%= x.item_type %>"
+            >
+              <%= x.code %> - <%= x.description %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Quantidade *
+
+        <input
+          id="quantity"
+          type="number"
+          name="quantity"
+          min="0.0001"
+          step="0.0001"
+          value="1"
+          <%= record ? '' : 'required' %>
+        >
+      </label>
+
+      <label>
+        Valor unitário *
+
+        <input
+          id="unitPrice"
+          type="number"
+          name="unit_price"
+          min="0.0001"
+          step="0.0001"
+          <%= record ? '' : 'required' %>
+        >
+      </label>
+
+      <label>
+        Desconto
+
+        <input
+          id="itemDiscount"
+          type="number"
+          name="item_discount"
+          min="0"
+          step="0.01"
+          value="0"
+        >
+      </label>
+
+      <label>
+        Total do item
+
+        <input
+          id="itemTotal"
+          readonly
+          value="R$ 0,00"
+        >
+      </label>
+
+    </div>
+
+    <div class="rm-grid-preview">
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Descrição</th>
+            <th>Tipo</th>
+            <th>Un.</th>
+            <th>Quantidade</th>
+            <th>Preço</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr id="previewRow">
+            <td colspan="7">
+              Selecione um item para visualizar.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section
+    class="card rm-tab-panel"
+    data-panel="financial"
+  >
+    <h2>Condição financeira</h2>
+
+    <div class="form-grid">
+
+      <label>
+        Vencimento
+
+        <input
+          type="date"
+          value="<%= dateValue(record?.due_date) %>"
+          data-sync="due_date"
+        >
+      </label>
+
+      <label>
+        Forma de geração
+
+        <input
+          value="Conta a receber automática ao confirmar"
+          readonly
+        >
+      </label>
+
+      <label>
+        Valor bruto
+
+        <input
+          id="grossTotal"
+          value="R$ 0,00"
+          readonlyount"
+          min="0"
+          step="0.01"
+          value="<%= record?.discount || 0 %>"
+        >
+      </label>
+
+      <label>
+        Valor líquido
+
+        <input
+          id="netTotal"
+          value="R$ 0,00"
+          readonly
+        >
+      </label>
+
+    </div>
+  </section>
+
+  <section
+    class="card rm-tab-panel"
+    data-panel="fiscal"
+  >
+    <h2>Informações fiscais</h2>
+
+    <div class="rm-info-box">
+      Os códigos fiscais são copiados do cadastro
+      do item selecionado.
+
+      Produtos levam NCM, CFOP, ICMS, IPI,
+      PIS e COFINS.
+
+      Serviços levam código nacional,
+      LC 116, NBS, CNAE, ISS,
+      PIS e COFINS.
+    </div>
+  </section>
+
+  <section
+    class="card rm-tab-panel"
+    data-panel="additional"
+  >
+    <h2>Dados adicionais</h2>
+
+    <div class="form-grid">
+
+      <label>
+        Data do serviço
+
+        <input
+          type="date"
+          name="service_date"
+        >
+      </label>
+
+      <label class="span-2">
+        Observações do item
+
+        <textarea
+          name="item_notes"
+          rows="3"
+        ></textarea>
+      </label>
+
+      <label class="span-2">
+        Observações do movimento
+
+        <textarea
+          name="notes"
+          rows="5"
+        ><%= record?.notes || '' %></textarea>
+      </label>
+
+    </div>
+  </section>
+
+</form>
+
+/rm-movement.jsscript>
+
+<%- include('../partials/foot') %>

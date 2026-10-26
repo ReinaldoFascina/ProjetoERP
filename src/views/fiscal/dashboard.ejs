@@ -1,0 +1,133 @@
+<%- include('../partials/head') %>
+
+    <header>
+        <div>
+            <span class="module">Versão 23</span>
+            <h1>Módulo Fiscal</h1>
+            <p>Tributos, vigências, vencimentos e períodos de apuração.</p>
+        </div>
+
+        <div>
+            <a class="button" href="/fiscal/taxes/new">Novo tributo</a>
+            <a class="button secondary" href="/fiscal/periods">Períodos</a>
+        </div>
+    </header>
+
+    <% if (message) { %>
+        <div class="alert success">
+            <%= message %>
+        </div>
+        <% } %>
+
+            <% if (error) { %>
+                <div class="alert">
+                    <%= error %>
+                </div>
+                <% } %>
+
+                    <section class="card">
+                        <h2>Tributos</h2>
+                        <div class="table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Tributo</th>
+                                        <th>Tipo</th>
+                                        <th>Periodicidade</th>
+                                        <th>Alíquota vigente</th>
+                                        <th>Dia padrão</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% taxes.forEach(t=> { %>
+                                        <tr>
+                                            <td>
+                                                <%= t.code %>
+                                            </td>
+                                            <td>
+                                                <%= t.name %>
+                                            </td>
+                                            <td>
+                                                <%= t.tax_type %>
+                                            </td>
+                                            <td>
+                                                <%= t.periodicity %>
+                                            </td>
+                                            <td>
+                                                <%= t.current_rate==null ? '-' : Number(t.current_rate).toFixed(4) + '%'
+                                                    %>
+                                            </td>
+                                            <td>
+                                                <%= t.due_day || '-' %>
+                                            </td>
+                                            <td>
+                                                <a class="button secondary"
+                                                    href="/fiscal/taxes/<%= t.id %>">Configurar</a>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+
+                                            <% if (!taxes.length) { %>
+                                                <tr>
+                                                    <td colspan="7">Nenhum tributo cadastrado.</td>
+                                                </tr>
+                                                <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2>Apurações recentes</h2>
+                        <div class="table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Tributo</th>
+                                        <th>Período</th>
+                                        <th>Vencimento</th>
+                                        <th>Status</th>
+                                        <th>A pagar</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% periods.forEach(p=> { %>
+                                        <tr>
+                                            <td>
+                                                <a class="button secondary" href="/fiscal/periods/<%= p.id %>">
+                                                    <%= p.tax_code %> - <%= p.tax_name %>
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <%= new Date(p.period_start).toLocaleDateString('pt-BR', {
+                                                    timeZone: 'UTC' }) %>
+                                                    a
+                                                    <%= new Date(p.period_end).toLocaleDateString('pt-BR', {
+                                                        timeZone: 'UTC' }) %>
+                                            </td>
+                                            <td>
+                                                <%= new Date(p.due_date).toLocaleDateString('pt-BR', { timeZone: 'UTC'
+                                                    }) %>
+                                            </td>
+                                            <td>
+                                                <%= p.status %>
+                                            </td>
+                                            <td>R$ <%= Number(p.payable_amount).toFixed(2) %>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+
+                                            <% if (!periods.length) { %>
+                                                <tr>
+                                                    <td colspan="5">Nenhuma apuração registrada.</td>
+                                                </tr>
+                                                <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </section>
+
+                    <%- include('../partials/foot') %>

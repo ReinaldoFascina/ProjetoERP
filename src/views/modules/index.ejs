@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Módulos do sistema</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body class="module-picker-page">
+  <main class="module-picker">
+    <header class="module-picker-header">
+      <div>
+        <span class="eyebrow">RESistemas</span>
+        <h1>Bem Vindo</h1>
+        <p>Olá, <strong>
+            <%= user.name %>
+          </strong>. Escolha a área em que deseja trabalhar.</p>
+      </div>
+      <form method="post" action="/logout"><button class="secondary">Sair</button></form>
+    </header>
+    <section class="module-cards">
+      <% modules.forEach((module)=> { %>
+        <a class="module-card module-card-<%= module.key %>" href="/modules/<%= module.key %>">
+          <span class="module-card-icon">
+            <%= 
+            module.key==="technical" ? "AT" : 
+            module.key==="stock" ? "ES":
+            module.key==="finance" ? "FI" :
+            module.key==="fiscal" ? "FS" :
+            module.key==="empr" ? "PT" :
+            module.key==="expimpo" ? "EX" :
+            module.key==="movement" ? "MV" :
+            module.key==="production" ? "MR" :
+            module.key==="patrimonio" ? "PT" :
+            module.key==="maintenance" ? "MN" :
+            module.key==="accounting" ? "CT":
+            "MD" %>
+          </span>
+          <span class="module-card-content">
+            <strong>
+              <%= module.name %>
+            </strong>
+            <small>
+              <%= module.description %>
+            </small>
+          </span>
+          <span class="module-card-arrow">›</span>
+        </a>
+        <% }) %>
+    </section>
+  </main>
+</body>
+
+</html>

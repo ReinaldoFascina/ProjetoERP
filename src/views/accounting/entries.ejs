@@ -1,0 +1,64 @@
+<%- include('../partials/head') %>
+<header>
+    <h1>Lançamentos contábeis</h1>
+</header>
+<section class="card">
+    <p>A inclusão recebe as partidas no campo JSON abaixo. 
+        Na próxima evolução, substitua por uma grade dinâmica de débito e crédito.
+    </p>
+    <form class="form" method="post" action="/accounting/entries">
+        <div class="form-grid">
+            <label>Livro
+                <select name="book_id"><%books.forEach(b=>{%>
+                    <option value="<%=b.id%>"><%=b.code%> - <%=b.name%>
+                    </option><%})%>
+                </select>
+            </label>
+            <label>Número
+                <input name="entry_number" required>
+            </label>
+            <label>Data
+                <input type="date" name="entry_date" required>
+            </label>
+            <label class="span-2">Histórico
+                <input name="history" required>
+            </label>
+        </div>
+        <label>Partidas JSON
+            <textarea name="lines" rows="8" required>[{"account_id":1,"cost_center_id":null,"debit":100,"credit":0},{"account_id":2,"cost_center_id":null,"debit":0,"credit":100}]</textarea>
+        </label>
+        <button>Lançar</button>
+    </form>
+</section>
+<section class="card">
+    <div class="table">
+    <table>
+        <tr>
+            <th>Número</th>
+            <th>Data</th>
+            <th>Livro</th>
+            <th>Histórico</th>
+            <th>Débito</th>
+            <th>Crédito</th>
+            <th>Status</th>
+            <th>Ações</th>
+        </tr>
+        <%entries.forEach(e=>{%>
+        <tr>
+            <td><%=e.entry_number%></td>
+            <td><%=e.entry_date%></td>
+            <td><%=e.book_code%></td>
+            <td><%=e.history%></td>
+            <td>R$ <%=Number(e.total_debit).toFixed(2)%></td>
+            <td>R$ <%=Number(e.total_credit).toFixed(2)%></td>
+            <td><%=e.status%></td>
+            <td>
+                <a class="small-button" href="/accounting/entries/<%=e.id%>">Editar</a>
+                <a class="small-button" href="/accounting/entries/<%=e.id%>/delete" onclick="return confirm('Tem certeza que deseja excluir este lançamento?')">Excluir</a>
+            </td>
+        </tr>
+        <%})%>
+    </table>
+    </div>
+</section>
+<%- include('../partials/foot') %>

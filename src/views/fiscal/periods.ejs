@@ -1,0 +1,52 @@
+<%- include('../partials/head') %>
+<header>
+    <h1>Períodos de apuração</h1>
+    <a class="button" href="/fiscal">Voltar</a>
+</header>
+<%if(message){%>
+    <div class="alert success"><%=message%></div>
+    <%}%><%if(error){%>
+        <div class="alert"><%=error%></div><%}%>
+        <form class="card form" method="post" action="/fiscal/periods">
+            <h2>Abrir período</h2>
+            <div class="grid">
+                <label>Tributo
+                    <select name="tax_id" required>
+                        <%taxes.forEach(t=>{%>
+                            <option value="<%=t.id%>"><%=t.code%> - <%=t.name%></option>
+                        <%})%>
+                    </select>
+                </label>
+                <label>Início
+                    <input type="date" name="period_start" required>
+                </label>
+                <label>Fim
+                    <input type="date" name="period_end" required>
+                </label>
+                <label>Observações
+                    <input name="notes">
+                </label>
+            </div>
+            <button>Abrir período e calcular vencimento</button>
+        </form>
+        <section class="card">
+            <table>
+                <tr>
+                    <th>Tributo</th>
+                    <th>Período</th>
+                    <th>Vencimento</th>
+                    <th>Status</th>
+                    <th>A pagar</th>
+                </tr>
+                <%periods.forEach(p=>{%>
+                    <tr>
+                        <td><a class="secondary button" href="/fiscal/periods/<%=p.id%>"><%=p.tax_code%> - <%=p.tax_name%></a></td>
+                        <td><%=new Date(p.period_start).toLocaleDateString('pt-BR',{timeZone:'UTC'})%> a <%=new Date(p.period_end).toLocaleDateString('pt-BR',{timeZone:'UTC'})%></td>
+                        <td><%=new Date(p.due_date).toLocaleDateString('pt-BR',{timeZone:'UTC'})%></td>
+                        <td><%=p.status%></td>
+                        <td>R$ <%=Number(p.payable_amount).toFixed(2)%></td>
+                    </tr>
+                <%})%>
+            </table>
+        </section>
+        <%- include('../partials/foot') %>

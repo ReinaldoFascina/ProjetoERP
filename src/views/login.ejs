@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width">
+        <title>Entrar</title>
+        <link rel="stylesheet" href="/style.css">
+    </head>
+    <body class="login">
+        <form method="post" class="card auth">
+            <h1>RE Sistemas</h1>
+            <p>Sistema de Gestão</p>
+            <% if(error){ %>
+                <div class="alert"><%= error %></div>
+            <% } %>
+            <label>E-mail
+                <input type="email" name="email" value="" required>
+            </label>
+            <label>Senha
+                <input type="password" name="password" value="" required>
+            </label>
+            <button>Entrar</button>
+        </form>
+    </body>
+</html>

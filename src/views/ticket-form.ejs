@@ -1,0 +1,40 @@
+<%- include('partials/head') %>
+<header>
+    <div>
+        <h1><%= ticket ? `Editar chamado ${ticket.number}` : 'Novo chamado' %></h1>
+        <p>Registre a solicitação do cliente</p>
+    </div>
+</header>
+<form class="card form" method="post" action="<%= ticket ? `/tickets/${ticket.id}` : '/tickets' %>">
+    <label>Cliente
+        <select name="client_id" required><% clients.forEach(c=>{ %><option value="<%= c.id %>" <%= ticket?.client_id === c.id ? 'selected' : '' %>>
+        <%= c.corporate_name %></option><% }) %>
+    </select>
+</label>
+<label>Título
+    <input name="title" value="<%= ticket?.title || '' %>" required>
+</label>
+<label>Descrição
+    <textarea name="description" rows="6" required><%= ticket?.description || '' %></textarea>
+</label>
+<label>Prioridade
+    <select name="priority">
+        <option value="BAIXA" <%= ticket?.priority === 'BAIXA' ? 'selected' : '' %>>BAIXA</option>
+        <option value="NORMAL" <%= ticket?.priority === 'NORMAL' ? 'selected' : '' %>>NORMAL</option>
+        <option value="ALTA" <%= ticket?.priority === 'ALTA' ? 'selected' : '' %>>ALTA</option>
+        <option value="CRITICA" <%= ticket?.priority === 'CRITICA' ? 'selected' : '' %>>CRITICA</option>
+    </select>
+</label>
+<label>Técnico
+    <select name="technician_id">
+        <option value="" >Não atribuído</option>
+        <% techs.forEach(t=>{ %>
+            <option value="<%= t.id %>" <%= ticket?.technician_id === t.id ? 'selected' : '' %>>
+                <%= t.name %>
+            </option>
+        <% }) %>
+    </select>
+</label>
+<button><%= ticket ? 'Atualizar chamado' : 'Criar chamado' %></button>
+</form>
+<%- include('partials/foot') %>

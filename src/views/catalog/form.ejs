@@ -1,0 +1,377 @@
+<%- include('../partials/head') %>
+
+<header>
+  <div>
+    <h1>Item Fiscal</h1>
+    <p>Cadastro de produtos e serviços com informações fiscais.</p>
+  </div>
+
+  <a class="small-button" href="/catalog">
+    Voltar
+  </a>
+</header>
+<form class="card form" method="post" action="<%= action %>">
+  <div class="form-grid">
+
+    <h2 class="span-2">Dados Gerais</h2>
+
+    <label>
+      Tipo *
+      <select
+        name="item_type"
+        id="item_type"
+        required
+      >
+        <option
+          value="SERVICO"
+          <%= (item?.item_type || 'SERVICO') === 'SERVICO' ? 'selected' : '' %>
+        >
+          Serviço
+        </option>
+
+        <option
+          value="PRODUTO"
+          <%= item?.item_type === 'PRODUTO' ? 'selected' : '' %>
+        >
+          Produto
+        </option>
+      </select>
+    </label>
+
+    <label>
+      Código *
+      <input
+        name="code"
+        maxlength="30"
+        required
+        value="<%= item?.code || '' %>"
+      >
+    </label>
+
+    <label class="span-2">
+      Descrição *
+      <input
+        name="description"
+        maxlength="255"
+        required
+        value="<%= item?.description || '' %>"
+      >
+    </label>
+
+    <label>
+      Unidade *
+      <input
+        name="unit"
+        maxlength="10"
+        value="<%= item?.unit || 'UN' %>"
+        required
+      >
+    </label>
+
+    <label>
+      Preço de Venda *
+      <input
+        type="number"
+        name="sale_price"
+        step="0.0001"
+        min="0"
+        required
+        value="<%= item?.sale_price || 0 %>"
+      >
+    </label>
+
+    <label>
+      <input
+        type="checkbox"
+        name="active"
+        <%= item?.active !== false ? 'checked' : '' %>
+      >
+      Ativo
+    </label>
+
+    <div class="span-2"></div>
+
+    <h2 class="span-2">Dados de Produto</h2>
+
+    <label class="produto-field">
+      NCM
+      <input
+        name="ncm"
+        maxlength="8"
+        pattern="[0-9]{8}"
+        value="<%= item?.ncm || '' %>"
+      >
+    </label>
+
+    <label class="produto-field">
+      CFOP
+      <input
+        name="cfop"
+        maxlength="4"
+        pattern="[0-9]{4}"
+        value="<%= item?.cfop || '' %>"
+      >
+    </label>
+
+    <label class="produto-field">
+      CST ICMS
+      <input
+        name="cst_icms"
+        maxlength="3"
+        value="<%= item?.cst_icms || '' %>"
+      >
+    </label>
+
+    <label class="produto-field">
+      CSOSN
+      <input
+        name="csosn"
+        maxlength="3"
+        value="<%= item?.csosn || '' %>"
+      >
+    </label>
+
+    <label class="produto-field">
+      ICMS %
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        max="100"
+        name="icms_rate"
+        value="<%= item?.icms_rate || '' %>"
+      >
+    </label>
+
+    <label class="produto-field">
+      IPI %
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        max="100"
+        name="ipi_rate"
+        value="<%= item?.ipi_rate || '' %>"
+      >
+    </label>
+
+    <label class="produto-field">
+      Origem
+      <select name="origin_code">
+        <option value="">Selecione</option>
+        <option value="0">0 - Nacional</option>
+        <option value="1">1 - Estrangeira Importação Direta</option>
+        <option value="2">2 - Estrangeira Mercado Interno</option>
+      </select>
+    </label>
+
+    <h2 class="span-2">Dados de Serviço</h2>
+
+    <label class="servico-field">
+      Código Nacional do Serviço
+      <input
+        name="national_service_code"
+        maxlength="20"
+        value="<%= item?.national_service_code || '' %>"
+      >
+    </label>
+
+    <label class="servico-field">
+      Código LC 116 *
+      <input
+        name="lc116_code"
+        maxlength="20"
+        value="<%= item?.lc116_code || '' %>"
+      >
+    </label>
+
+    <label class="servico-field">
+      NBS
+      <input
+        name="nbs_code"
+        maxlength="9"
+        pattern="[0-9]{9}"
+        value="<%= item?.nbs_code || '' %>"
+      >
+    </label>
+
+    <label class="servico-field">
+      CNAE
+      <input
+        name="cnae"
+        maxlength="7"
+        pattern="[0-9]{7}"
+        value="<%= item?.cnae || '' %>"
+      >
+    </label>
+
+    <label class="servico-field">
+      Código Município (IBGE)
+      <input
+        name="municipality_code"
+        maxlength="7"
+        pattern="[0-9]{7}"
+        value="<%= item?.municipality_code || '' %>"
+      >
+    </label>
+
+    <label class="servico-field">
+      ISS %
+      <input
+        type="number"
+        name="iss_rate"
+        step="0.01"
+        min="0"
+        max="100"
+        value="<%= item?.iss_rate || '' %>"
+      >
+    </label>
+
+    <label class="servico-field">
+      Retém ISS
+      <input
+        type="checkbox"
+        name="withhold_iss"
+        <%= item?.withhold_iss ? 'checked' : '' %>
+      >
+    </label>
+
+    <h2 class="span-2">Tributos Federais</h2>
+
+    <label>
+      CST PIS
+      <input
+        name="pis_cst"
+        maxlength="2"
+        value="<%= item?.pis_cst || '' %>"
+      >
+    </label>
+
+    <label>
+      PIS %
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        max="100"
+        name="pis_rate"
+        value="<%= item?.pis_rate || '' %>"
+      >
+    </label>
+
+    <label>
+      CST COFINS
+      <input
+        name="cofins_cst"
+        maxlength="2"
+        value="<%= item?.cofins_cst || '' %>"
+      >
+    </label>
+
+    <label>
+      COFINS %
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        max="100"
+        name="cofins_rate"
+        value="<%= item?.cofins_rate || '' %>"
+      >
+    </label>
+
+    <label>
+      CBS %
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        max="100"
+        name="cbs_rate"
+        value="<%= item?.cbs_rate || '' %>"
+      >
+    </label>
+
+    <label>
+      IBS %
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        max="100"
+        name="ibs_rate"
+        value="<%= item?.ibs_rate || '' %>"
+      >
+    </label>
+
+  </div>
+
+  <div class="form-actions">
+    <a
+      class="small-button secondary"
+      href="/catalog"
+    >
+      Cancelar
+    </a>
+
+    <button type="submit">
+      Salvar Item Fiscal
+    </button>
+  </div>
+</form>
+
+<script>
+function toggleFiscalFields() {
+  const tipo = document.getElementById("item_type").value;
+
+  document.querySelectorAll(".produto-field").forEach(el => {
+    el.style.display = tipo === "PRODUTO" ? "" : "none";
+  });
+
+  document.querySelectorAll(".servico-field").forEach(el => {
+    el.style.display = tipo === "SERVICO" ? "" : "none";
+  });
+}
+
+document.getElementById("item_type")
+  .addEventListener("change", toggleFiscalFields);
+
+toggleFiscalFields();
+
+document
+  .getElementById("fiscalForm")
+  .addEventListener("submit", function (e) {
+
+    const tipo = document.getElementById("item_type").value;
+
+    const ncm = document.querySelector("[name=ncm]");
+    const cfop = document.querySelector("[name=cfop]");
+    const lc116 = document.querySelector("[name=lc116_code]");
+
+    if (tipo === "PRODUTO") {
+
+      if (!ncm.value.trim()) {
+        alert("NCM é obrigatório para produtos.");
+        e.preventDefault();
+        return;
+      }
+
+      if (!cfop.value.trim()) {
+        alert("CFOP é obrigatório para produtos.");
+        e.preventDefault();
+        return;
+      }
+    }
+
+    if (tipo === "SERVICO") {
+
+      if (!lc116.value.trim()) {
+        alert("Código LC 116 é obrigatório para serviços.");
+        e.preventDefault();
+        return;
+      }
+    }
+  });
+</script>
+
+<%- include('../partials/foot') %>

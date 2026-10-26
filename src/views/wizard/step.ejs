@@ -1,0 +1,196 @@
+<%- include('../partials/head') %>
+
+<div class="wizard-container">
+  <aside class="wizard-sidebar">
+    <ul>
+      <li class="<%= step==='IDENTIFICACAO'?'active':'' %>">1. Identificação</li>
+      <li class="<%= step==='FINANCEIRO'?'active':'' %>">2. Financeiro</li>
+      <li class="<%= step==='FISCAL'?'active':'' %>">3. Fiscal</li>
+      <li class="<%= step==='CONTABIL'?'active':'' %>">4. Contábil</li>
+      <li class="<%= step==='RETENCOES'?'active':'' %>">5. Retenções</li>
+      <li class="<%= step==='RESUMO'?'active':'' %>">6. Resumo</li>
+    </ul>
+  </aside>
+
+  <main class="wizard-step">
+    <% if (step === 'IDENTIFICACAO') { %>
+      <h2>Identificação do Movimento</h2>
+      <form method="post" action="/movement-type-wizard/identificacao">
+        <label>Nome do tipo de movimento
+          <input type="text" name="name" required>
+        </label>
+        <label>Código
+          <input type="text" name="code" required>
+        </label>
+        <label>Categoria
+          <select name="category" required>
+            <option>Pedido de venda</option>
+            <option>Orçamento de venda</option>
+            <option>Ordem de compra</option>
+            <option>Solicitação de compra</option>
+            <option>Movimento fiscal de venda</option>
+            <option>Movimento interno</option>
+          </select>
+        </label>
+        <label>
+          <input type="checkbox" name="is_fiscal"> É movimento fiscal
+        </label>
+        <button>Salvar e continuar</button>
+      </form>
+    <% } %>
+
+    <% if (step === 'FINANCEIRO') { %>
+      <h2>Configuração Financeira</h2>
+      <form method="post" action="/movement-type-wizard/financeiro">
+        <label>
+          <input type="checkbox" name="generates_financial"> Gera financeiro
+        </label>
+        <label>Direção
+          <select name="direction">
+            <option value="RECEBER">Receber</option>
+            <option value="PAGAR">Pagar</option>
+          </select>
+        </label>
+        <label>Número de parcelas
+          <input type="number" name="installment_count" min="1" value="1">
+        </label>
+        <label>Prazo em dias
+          <input type="number" name="payment_term_days" min="0" value="0">
+        </label>
+        <label>
+          <input type="checkbox" name="cost_center_required"> Centro de custo obrigatório
+        </label>
+        <label>
+          <input type="checkbox" name="allocation_required"> Rateio obrigatório
+        </label>
+        <button>Salvar e continuar</button>
+      </form>
+    <% } %>
+
+    <% if (step === 'FISCAL') { %>
+      <h2>Configuração Fiscal</h2>
+      <form method="post" action="/movement-type-wizard/fiscal">
+        <label>Natureza fiscal
+          <select name="fiscal_nature_id">
+            <% fiscalNatures.forEach(n => { %>
+              <option value="<%= n.id %>"><%= n.name %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label>Modelo de documento
+          <select name="document_model">
+            <option value="NFE">NFE</option>
+            <option value="NFSE">NFSE</option>
+          </select>
+        </label>
+        <label>
+          <input type="checkbox" name="generates_posting"> Gera escrituração
+        </label>
+        <label>
+          <input type="checkbox" name="generates_nfe"> Gera NFE
+        </label>
+        <label>Série
+          <input type="text" name="series" maxlength="3">
+        </label>
+        <label>Ambiente
+          <select name="environment">
+            <option value="HOMOLOGACAO">Homologação</option>
+            <option value="PRODUCAO">Produção</option>
+          </select>
+        </label>
+        <label>Modo de envio
+          <select name="send_mode">
+            <option value="MANUAL">Manual</option>
+            <option value="AUTOMATICO">Automático</option>
+          </select>
+        </label>
+        <label>
+          <input type="checkbox" name="allows_item_nature"> Permite natureza fiscal por item
+        </label>
+        <button>Salvar e continuar</button>
+      </form>
+    <% } %>
+
+    <% if (step === 'CONTABIL') { %>
+      <h2>Configuração Contábil</h2>
+      <form method="post" action="/movement-type-wizard/contabil">
+        <label>
+          <input type="checkbox" name="generates_accounting"> Gera lançamentos contábeis
+        </label>
+        <label>Modo de lançamento
+          <select name="posting_mode">
+            <option value="MANUAL">Manual</option>
+            <option value="AUTOMATICO">Automático</option>
+          </select>
+        </label>
+        <label>Código do evento contábil
+          <input type="text" name="accounting_event_code">
+        </label>
+        <label>Conta débito
+          <input type="text" name="debit_account">
+        </label>
+        <label>Conta crédito
+          <input type="text" name="credit_account">
+        </label>
+        <label>Histórico padrão
+          <textarea name="history_template"></textarea>
+        </label>
+        <label>
+          <input type="checkbox" name="cost_center_required"> Centro de custo obrigatório
+        </label>
+        <button>Salvar e continuar</button>
+      </form>
+    <% } %>
+
+    <% if (step === 'RETENCOES') { %>
+      <h2>Configuração de Retenções</h2>
+      <form method="post" action="/movement-type-wizard/retencoes">
+        <label>Imposto
+          <select name="tax_id">
+            <% fiscalTaxes.forEach(t => { %>
+              <option value="<%= t.id %>"><%= t.name %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label>Nível de aplicação
+          <select name="application_level">
+            <option value="ITEM">Item</option>
+            <option value="MOVIMENTO">Movimento</option>
+          </select>
+        </label>
+        <label>Modo de controle
+          <select name="control_mode">
+            <option value="NAO_USA">Não usa</option>
+            <option value="AUTOMATICO">Automático</option>
+            <option value="MANUAL">Manual</option>
+          </select>
+        </label>
+        <label>Alíquota padrão
+          <input type="number" step="0.000001" name="default_rate">
+        </label>
+        <label>Valor padrão
+          <input type="number" step="0.01" name="default_value">
+        </label>
+        <label>
+          <input type="checkbox" name="deducts_financial"> Deduz do financeiro
+        </label>
+        <label>
+          <input type="checkbox" name="generates_separate_title"> Gera título separado
+        </label>
+        <label>Natureza da receita
+          <input type="text" name="nature_of_income">
+        </label>
+        <button>Salvar e continuar</button>
+      </form>
+    <% } %>
+
+    <% if (step === 'RESUMO') { %>
+      <h2>Resumo da Configuração</h2>
+      <p>Confira abaixo os parâmetros definidos para este tipo de movimento:</p>
+      <!-- Aqui você renderiza os dados consolidados -->
+      <button type="submit" formaction="/movement-type-wizard/concluir">Concluir configuração</button>
+    <% } %>
+  </main>
+</div>
+
+<%- include('../partials/foot') %>

@@ -1,0 +1,80 @@
+<%- include('../partials/head') %>
+<header>
+    <div>
+        <h1>Livros fiscais</h1>
+        <p>Impostos escriturados por movimento e item.</p>
+    </div>
+    <a class = "button" href="/fiscal">Voltar</a>
+</header>
+<%if(message){%><
+    div class="alert success"><%=message%></div>
+    <%}%><%if(error){%>
+        <div class="alert"><%=error%></div>
+        <%}%>
+        <form class="card filters" method="get">
+            <label>Livro
+                <select name="book"><%['ENTRADAS','SAIDAS','SERVICOS_PRESTADOS','SERVICOS_TOMADOS'].forEach(v=>{%>
+                    <option value="<%=v%>" <%=filters.book===v?'selected':''%>><%=v%></option><%})%>
+                </select>
+            </label>
+            <label>De
+                <input type="date" name="date_from" value="<%=filters.date_from%>">
+            </label>
+            <label>Até
+                <input type="date" name="date_to" value="<%=filters.date_to%>">
+            </label>
+            <label>Tributo
+                <select name="tax_id">
+                    <option value="">Todos</option>
+                    <%taxes.forEach(t=>{%>
+                        <option value="<%=t.id%>" <%=String(filters.tax_id)===String(t.id)?'selected':''%>>
+                            <%=t.code%> - <%=t.name%>
+                        </option>
+                    <%})%>
+                </select>
+            </label>
+            <button>Filtrar</button>
+        </form>
+        <section class="metrics">
+            <div class="card">Base<br><b>R$ <%=Number(totals.tax_base).toFixed(2)%></b></div>
+            <div class="card">Imposto<br><b>R$ <%=Number(totals.tax_amount).toFixed(2)%></b></div>
+            <div class="card">Retido<br><b>R$ <%=Number(totals.withheld_amount).toFixed(2)%></b></div>
+            <div class="card">Crédito<br><b>R$ <%=Number(totals.credit_amount).toFixed(2)%></b></div>
+        </section>
+        <section class="card">
+            <div class="table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Documento</th>
+                            <th>Participante</th>
+                            <th>Tributo</th>
+                            <th>NBS</th>
+                            <th>Base</th>
+                            <th>Alíquota</th>
+                            <th>Imposto</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%records.forEach(r=>{%>
+                            <tr>
+                                <td><%=new Date(r.document_date).toLocaleDateString('pt-BR',{timeZone:'UTC'})%></td>
+                                <td><%=r.document_number||r.movement_number%></td>
+                                <td><%=r.participant_name||'-'%></td>
+                                <td><%=r.tax_code%></td>
+                                <td><%=r.nbs_code||'-'%></td>
+                                <td>R$ <%=Number(r.tax_base).toFixed(2)%></td>
+                                <td><%=Number(r.rate).toFixed(4)%>%</td>
+                                <td>R$ <%=Number(r.tax_amount).toFixed(2)%></td>
+                                <td><%=r.status%></td>
+                            </tr>
+                        <%})%>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <%- include('../partials/foot') %>
+

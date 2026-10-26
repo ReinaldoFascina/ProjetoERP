@@ -1,0 +1,241 @@
+<%- include('../partials/head') %>
+
+<header class="rm-page-header">
+  <div>
+    <span class="rm-module">Compras e Recebimento</span>
+    <h1>Entrada de compra</h1>
+    <p>
+      Movimento de entrada por nota fiscal ou recibo
+      com geração automática do contas a pagar.
+    </p>
+  </div>
+
+  <div class="rm-toolbar">
+    <a class="small-button secondary" href="/finance">Cancelar</a>
+    <button form="purchaseForm" type="submit">Confirmar entrada</button>
+  </div>
+</header>
+
+<form id="purchaseForm" class="rm-movement" method="post" action="/purchases">
+  <section class="card rm-identification">
+    <div class="rm-document-badge">
+      <span>Entrada</span>
+      <strong>NOVA</strong>
+      <small>EM DIGITAÇÃO</small>
+    </div>
+
+    <div class="form-grid rm-header-grid">
+      <label>
+        Fornecedor *
+        <select name="supplier_id" required>
+          <option value="">Selecione</option>
+          <% suppliers.forEach((x) => { %>
+            <option value="<%= x.id %>">
+              <%= x.corporate_name %> · <%= x.document || 'Sem documento' %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Documento
+        <select name="document_type">
+          <option value="NOTA_FISCAL">Nota fiscal</option>
+          <option value="RECIBO">Recibo</option>
+        </select>
+      </label>
+
+      <label>
+        Número *
+        <input name="document_number" required>
+      </label>
+
+      <label>
+        Emissão *
+        <input type="date" name="issue_date" required>
+      </label>
+
+      <label>
+        Entrada *
+        <input type="date" name="entry_date" required>
+      </label>
+
+      <label>
+        Vencimento *
+        <input type="date" name="due_date" required>
+      </label>
+    </div>
+  </section>
+
+  <nav class="rm-tabs">
+    <button type="button" class="active" data-tab="items">Itens</button>
+    <button type="button" data-tab="financial">Financeiro</button>
+    <button type="button" data-tab="fiscal">Fiscal</button>
+    <button type="button" data-tab="additional">Dados adicionais</button>
+  </nav>
+
+  <section class="card rm-tab-panel active" data-panel="items">
+    <div class="section-heading">
+      <div>
+        <h2>Itens da entrada</h2>
+        <p>Informe os valores do documento recebido.</p>
+      </div>
+    </div>
+
+    <div class="rm-item-entry">
+      <label>
+        Produto/Serviço *
+        <select
+          name="catalog_item_id"
+          id="catalogItem"
+          <%= catalogItems && catalogItems.length ? 'required' : '' %>
+        >
+          <option value="">Selecione o item</option>
+          <% (catalogItems || []).forEach((x) => { %>
+            <option
+              value="<%= x.id %>"
+              data-code="<%= x.code %>"
+              data-description="<%= x.description %>"
+              data-unit="<%= x.unit %>"
+              data-price="<%= x.sale_price %>"
+              data-type="<%= x.item_type %>"
+            >
+              <%= x.code %> - <%= x.description %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Quantidade
+        <input
+          id="purchaseQuantity"
+          type="number"
+          min="0.0001"
+          step="0.0001"
+          value="1"
+        >
+      </label>
+
+      <label>
+        Valor unitário
+        <input
+          id="purchasePrice"
+          type="number"
+          min="0"
+          step="0.01"
+          value="0"
+        >
+      </label>
+
+      <label>
+        Desconto
+        <input
+          id="purchaseDiscount"
+          type="number"
+          min="0"
+          step="0.01"
+          value="0"
+        >
+      </label>
+
+      <label>
+        Total
+        <input
+          id="purchaseItemTotal"
+          readonly
+          value="R$ 0,00"
+        >
+      </label>
+    </div>
+
+    <button type="button" id="addPurchaseItem" class="small-button">
+      Adicionar item à grade
+    </button>
+
+    <div class="rm-grid-preview">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Descrição</th>
+            <th>Quantidade</th>
+            <th>Valor unitário</th>
+            <th>Desconto</th>
+            <th>Total</th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody id="purchaseItems">
+          <tr class="empty">
+            <td colspan="7">Nenhum item informado.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card rm-tab-panel" data-panel="financial">
+    <h2>Financeiro</h2>
+
+    <div class="form-grid">
+      <label>
+        Valor do documento *
+        <input
+          id="purchaseTotal"
+          type="number"
+          name="total"
+          min="0.01"
+          step="0.01"
+          required
+          readonly
+        >
+      </label>
+
+      <label>
+        Geração financeira
+        <input value="Conta a pagar automática" readonly>
+      </label>
+
+      <label>
+        Vencimento
+        <input type="date" data-copy-from="due_date" readonly>
+      </label>
+    </div>
+  </section>
+
+  <section class="card rm-tab-panel" data-panel="fiscal">
+    <h2>Dados fiscais</h2>
+
+    <div class="rm-info-box">
+      A entrada identifica o documento como nota fiscal ou recibo.
+      A estrutura visual está preparada para evolução de:
+      <ul>
+        <li>Chave de acesso</li>
+        <li>Série</li>
+        <li>Modelo</li>
+        <li>CFOP</li>
+        <li>NCM</li>
+        <li>ICMS</li>
+        <li>IPI</li>
+        <li>PIS</li>
+        <li>COFINS</li>
+        <li>Rateios contábeis</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="card rm-tab-panel" data-panel="additional">
+    <h2>Dados adicionais</h2>
+
+    <label>
+      Observações
+      <textarea name="notes" rows="6"></textarea>
+    </label>
+  </section>
+</form>
+
+<script src="/js/rm-movement.js"></script>
+
+<%- include('../partials/foot') %>

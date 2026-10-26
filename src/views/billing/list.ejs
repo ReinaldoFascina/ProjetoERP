@@ -1,0 +1,146 @@
+<%- include('../partials/head') %>
+<%
+  const movementList = typeof movements !== 'undefined' && Array.isArray(movements)
+    ? movements
+    : (typeof rows !== 'undefined' && Array.isArray(rows) ? rows : []);
+
+  const clientList = typeof clients !== 'undefined' && Array.isArray(clients)
+    ? clients
+    : [];
+
+  const activeFilters = typeof filters !== 'undefined' && filters
+    ? filters
+    : {
+        status: '',
+        client_id: '',
+        issue_from: '',
+        issue_to: '',
+        service_from: '',
+        service_to: ''
+      };
+%>
+
+<header>
+  <div>
+    <h1>Movimentos</h1>
+    <p>Estrutura mestre-detalhe para serviços, produtos e RATs.</p>
+  </div>
+  <a class="button" href="/billing/new">+ Novo movimento</a>
+</header>
+
+<form class="card filters movement-filters" method="get" action="/billing">
+  <label>
+    Status
+    <select name="status">
+      <option value="">Todos</option>
+      <% ['RASCUNHO','CONFIRMADO','FATURADO','CANCELADO'].forEach((status) => { %>
+        <option
+          value="<%= status %>"
+          <%= activeFilters.status === status ? 'selected' : '' %>
+        >
+          <%= status %>
+        </option>
+      <% }) %>
+    </select>
+  </label>
+
+  <label>
+    Cliente
+    <select name="client_id">
+      <option value="">Todos</option>
+      <% clientList.forEach((client) => { %>
+        <option
+          value="<%= client.id %>"
+          <%= String(activeFilters.client_id) === String(client.id) ? 'selected' : '' %>
+        >
+          <%= client.corporate_name %>
+        </option>
+      <% }) %>
+    </select>
+  </label>
+
+  <label>
+    Emissão de
+    <input type="date" name="issue_from" value="<%= activeFilters.issue_from %>">
+  </label>
+
+  <label>
+    Emissão até
+    <input type="date" name="issue_to" value="<%= activeFilters.issue_to %>">
+  </label>
+
+  <label>
+    Atendimento de
+    <input type="date" name="service_from" value="<%= activeFilters.service_from %>">
+  </label>
+
+  <label>
+    Atendimento até
+    <input type="date" name="service_to" value="<%= activeFilters.service_to %>">
+  </label>
+
+  <div class="filter-actions">
+    <button type="submit">Filtrar</button>
+    <a class="small-button secondary" href="/billing">Limpar</a>
+  </div>
+</form>
+
+<section class="card">
+  <div class="table">
+    <table>
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Cliente</th>
+          <th>Emissão</th>
+          <th>Atendimentos</th>
+          <th>Itens</th>
+          <th>Status</th>
+          <th>Serviços</th>
+          <th>Produtos</th>
+          <th>Total</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% movementList.forEach((movement) => { %>
+          <tr>
+            <td><strong><%= movement.number %></strong></td>
+            <td><%= movement.corporate_name %></td>
+            <td>
+              <%= new Date(movement.date_issued).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) %>
+            </td>
+            <td>
+              <% if (movement.service_date_from) { %>
+                <%= new Date(movement.service_date_from).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) %>
+                <% if (movement.service_date_to && String(movement.service_date_from) !== String(movement.service_date_to)) { %>
+                  até <%= new Date(movement.service_date_to).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) %>
+                <% } %>
+              <% } else { %>
+                -
+              <% } %>
+            </td>
+            <td><%= Number(movement.item_count || 0) %></td>
+            <td><span class="<%= movement.status === 'CANCELADO' ? 'warning' : movement.status === 'RASCUNHO' ? 'inativo' : 'pill' %>"><%= movement.status %></span></td>
+            <td>R$ <%= Number(movement.service_total || 0).toFixed(2) %></td>
+            <td>R$ <%= Number(movement.product_total || 0).toFixed(2) %></td>
+            <td><strong>R$ <%= Number(movement.total || 0).toFixed(2) %></strong></td>
+            <td>
+              <a class="small-button" href="/billing/<%= movement.id %>">Abrir</a>
+            </td>
+            <td>
+              <form method="post" action="/billing/<%= movement.id %>/cancel" onsubmit="return confirm('Tem certeza que deseja cancelar este movimento?');">
+                <a class="small-button secondary" href="javascript:void(0)" onclick="this.parentNode.submit()">Cancelar</a>
+              </form>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (!movementList.length) { %>
+    <p>Nenhum movimento encontrado.</p>
+  <% } %>
+</section>
+
+<%- include('../partials/foot') %>

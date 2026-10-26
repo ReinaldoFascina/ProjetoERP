@@ -1,0 +1,1541 @@
+import express from "express";
+import session from "express-session";
+import helmet from "helmet";
+import bcrypt from "bcryptjs";
+import "dotenv/config";
+
+import { db } from "./database/db.js";
+import { requireAuth, allow } from "./middleware/auth.js";
+import { companyContext } from "./middleware/company-context.js";
+import { billingRouter } from "./routes/billing.js";
+import { catalogRouter } from "./routes/catalog.js";
+import { financeRouter } from "./routes/finance.js";
+import { ratReportRouter } from "./routes/rat-report.js";
+import { modulesRouter } from "./routes/modules.js";
+import { companyContextRouter } from "./routes/company-context.js";
+import { systemModules } from "./config/modules.js";
+import { nfseRouter } from "./routes/nfse.js";
+import { nfseNationalRouter } from "./routes/nfse-national.js";
+import { fiscalRouter } from "./routes/fiscal.js";
+import { movementsRouter } from "./routes/movements.js";
+import { stockManagementRouter } from './routes/stock-management.js';
+
+const app = express();
+const port = Number(process.env.PORT || 3000);
+const asyncRoute = (handler) => (req, res, next) =>
+  Promise.resolve(handler(req, res, next)).catch(next);
+
+app.set("view engine", "ejs");
+app.set("views", "src/views");
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(express.urlencoded({ extended: true, limit: "3mb" }));
+app.use(express.json({ limit: "3mb" }));
+app.use(express.static("public"));
+app.use(
+  session({
+    name: "resistemas.sid",
+    secret: process.env.SESSION_SECRET || "dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 8 * 60 * 60 * 1000,
+    },
+  })
+);
+
+app.use((req, res, next) => {
+  const user = req.session?.user || null;
+  res.locals.user = user;
+  res.locals.companyContext = null;
+
+  const requestedFiscal = ["/fiscal", "/nfse", "/nfse-national"].some((path) =>
+    req.path.startsWith(path)
+  );
+  const requestedFinance = [
+    "/finance",
+    "/billing",
+    "/purchases",
+    "/cash-",
+    "/reconciliation",
+    "/catalog",
+  ].some((path) => req.path.startsWith(path));
+  const requestedTechnical =
+    req.path === "/" ||
+    ["/tickets", "/agenda", "/rats", "/technicians", "/users", "/clients"].some(
+      (path) => req.path.startsWith(path)
+    );
+
+  if (user && requestedFiscal && ["ADMIN", "COORDENADOR"].includes(user.role))
+    req.session.activeModule = "fiscal";
+  else if (
+    user &&
+    requestedFinance &&
+    ["ADMIN", "COORDENADOR"].includes(user.role)
+  )
+    req.session.activeModule = "finance";
+  else if (user && requestedTechnical) req.session.activeModule = "technical";
+
+  const key = req.session?.activeModule || "technical";
+  res.locals.activeModule = systemModules[key] || systemModules.technical;
+  return next();
+});
+
+app.get("/login", (req, res) => {
+  if (req.session?.user) return res.redirect("/company-context");
+  return res.render("login", { error: null });
+});
+
+app.post(
+  "/login",
+  asyncRoute(async (req, res) => {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    if (!email || !password)
+      return res
+        .status(400)
+        .render("login", { error: "Informe o e-mail e a senha." });
+
+    const { rows } = await db.query(
+      "SELECT * FROM users WHERE LOWER(email)=LOWER($1) AND active=TRUE",
+      [email]
+    );
+    const user = rows[0];
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      return res
+        .status(401)
+        .render("login", { error: "E-mail ou senha inválidos" });
+    }
+
+    await new Promise((resolve, reject) =>
+      req.session.regenerate((error) => (error ? reject(error) : resolve()))
+    );
+    req.session.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      client_id: user.client_id,
+    };
+    req.session.activeModule = "technical";
+    await db.query("UPDATE users SET last_login_at=NOW() WHERE id=$1", [
+      user.id,
+    ]);
+    await new Promise((resolve, reject) =>
+      req.session.save((error) => (error ? reject(error) : resolve()))
+    );
+    return res.redirect("/company-context");
+  })
+);
+
+app.post("/logout", (req, res, next) => {
+  if (!req.session) {
+    res.clearCookie("resistemas.sid");
+    return res.redirect("/login");
+  }
+  return req.session.destroy((error) => {
+    if (error) return next(error);
+    res.clearCookie("resistemas.sid");
+    return res.redirect("/login");
+  });
+});
+
+app.get("/health", (req, res) => res.json({ ok: true }));
+
+// A seleção de empresa/filial precisa estar antes do middleware que exige contexto.
+app.use(companyContextRouter);
+app.use(companyContext);
+
+app.get(
+  "/",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const [tickets, open, rat, agenda, billing] = await Promise.all([
+      db.query(
+        "SELECT t.*,c.corporate_name,u.name technician FROM tickets t JOIN clients c ON c.id=t.client_id LEFT JOIN users u ON u.id=t.technician_id ORDER BY t.opened_at DESC LIMIT 10"
+      ),
+      db.query(
+        "SELECT COUNT(*)::int total FROM tickets WHERE status NOT IN ('RESOLVIDO','FECHADO','CANCELADO')"
+      ),
+      db.query(
+        "SELECT COALESCE(SUM(billable_minutes),0)::int minutes FROM rats WHERE date_trunc('month',service_date)=date_trunc('month',CURRENT_DATE)"
+      ),
+      db.query(
+        "SELECT a.*,u.name technician,t.number FROM appointments a JOIN users u ON u.id=a.technician_id LEFT JOIN tickets t ON t.id=a.ticket_id WHERE start_at::date=CURRENT_DATE ORDER BY start_at"
+      ),
+      db.query(
+        "SELECT c.id,c.corporate_name,c.hourly_rate,COALESCE(SUM(r.billable_minutes),0)::int billable_minutes,COALESCE(SUM(CASE WHEN r.customer_approved THEN r.billable_minutes ELSE 0 END),0)::int approved_minutes,ROUND((COALESCE(SUM(r.billable_minutes),0)::numeric/60)*c.hourly_rate,2) amount,ROUND((COALESCE(SUM(CASE WHEN r.customer_approved THEN r.billable_minutes ELSE 0 END),0)::numeric/60)*c.hourly_rate,2) approved_amount FROM clients c JOIN rats r ON COALESCE(r.client_id,(SELECT t.client_id FROM tickets t WHERE t.id=r.ticket_id))=c.id WHERE date_trunc('month',r.service_date)=date_trunc('month',CURRENT_DATE) GROUP BY c.id,c.corporate_name,c.hourly_rate ORDER BY amount DESC,c.corporate_name"
+      ),
+    ]);
+    const billingTotal = billing.rows.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    );
+    return res.render("dashboard", {
+      tickets: tickets.rows,
+      open: open.rows[0].total,
+      billable: rat.rows[0].minutes,
+      agenda: agenda.rows,
+      billing: billing.rows,
+      billingTotal,
+    });
+  })
+);
+
+// Usuários
+app.get(
+  "/users",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    const { q = "", role = "", status = "", client_id = "" } = req.query;
+    const params = [],
+      where = [];
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(
+        `(u.name ILIKE $${params.length} OR u.email ILIKE $${params.length})`
+      );
+    }
+    if (role) {
+      params.push(role);
+      where.push(`u.role=$${params.length}`);
+    }
+    if (status) {
+      params.push(status === "ATIVO");
+      where.push(`u.active=$${params.length}`);
+    }
+    if (client_id) {
+      params.push(Number(client_id));
+      where.push(`u.client_id=$${params.length}::integer`);
+    }
+    const [users, clients] = await Promise.all([
+      db.query(
+        `SELECT u.id,u.name,u.email,u.role,u.phone,u.active,u.must_change_password,u.last_login_at,u.created_at,c.corporate_name FROM users u LEFT JOIN clients c ON c.id=u.client_id ${where.length ? "WHERE " + where.join(" AND ") : ""
+        } ORDER BY u.name`,
+        params
+      ),
+      db.query(
+        "SELECT id,corporate_name FROM clients WHERE active=TRUE ORDER BY corporate_name"
+      ),
+    ]);
+    return res.render("users", {
+      users: users.rows,
+      clients: clients.rows,
+      filters: { q, role, status, client_id },
+    });
+  })
+);
+
+app.get(
+  "/users/new",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    const { rows: clients } = await db.query(
+      "SELECT id,corporate_name FROM clients WHERE active=TRUE ORDER BY corporate_name"
+    );
+    return res.render("user-form", {
+      account: null,
+      clients,
+      action: "/users",
+      pageTitle: "Novo usuário",
+      error: null,
+    });
+  })
+);
+
+app.post(
+  "/users",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    const b = req.body,
+      allowed = ["ADMIN", "COORDENADOR", "TECNICO", "CLIENTE"];
+    if (!allowed.includes(b.role))
+      return res.status(400).render("error", { message: "Perfil inválido." });
+    const { rows: clients } = await db.query(
+      "SELECT id,corporate_name FROM clients WHERE active=TRUE ORDER BY corporate_name"
+    );
+    if (b.role === "CLIENTE" && !b.client_id)
+      return res.status(400).render("user-form", {
+        account: b,
+        clients,
+        action: "/users",
+        pageTitle: "Novo usuário",
+        error: "Selecione o cliente para o perfil CLIENTE.",
+      });
+    const exists = await db.query(
+      "SELECT 1 FROM users WHERE LOWER(email)=LOWER($1)",
+      [b.email]
+    );
+    if (exists.rowCount)
+      return res.status(409).render("user-form", {
+        account: b,
+        clients,
+        action: "/users",
+        pageTitle: "Novo usuário",
+        error: "Já existe um usuário com este e-mail.",
+      });
+    const hash = await bcrypt.hash(b.password, 12);
+    await db.query(
+      "INSERT INTO users(name,email,password_hash,role,client_id,phone,active,must_change_password,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,NOW())",
+      [
+        b.name,
+        b.email.trim().toLowerCase(),
+        hash,
+        b.role,
+        b.role === "CLIENTE" ? Number(b.client_id) : null,
+        b.phone || null,
+        b.active === "on",
+        b.must_change_password === "on",
+      ]
+    );
+    return res.redirect("/users");
+  })
+);
+
+app.get(
+  "/users/:id/edit",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    const [u, c] = await Promise.all([
+      db.query(
+        "SELECT id,name,email,role,client_id,phone,active,must_change_password FROM users WHERE id=$1",
+        [req.params.id]
+      ),
+      db.query(
+        "SELECT id,corporate_name FROM clients WHERE active=TRUE ORDER BY corporate_name"
+      ),
+    ]);
+    if (!u.rows[0])
+      return res.status(404).render("error", { message: "Usuário não encontrado." });
+    return res.render("user-form", {
+      account: u.rows[0],
+      clients: c.rows,
+      action: `/users/${req.params.id}`,
+      pageTitle: "Editar usuário",
+      error: null,
+    });
+  })
+);
+
+app.post(
+  "/users/:id",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    const b = req.body,
+      allowed = ["ADMIN", "COORDENADOR", "TECNICO", "CLIENTE"];
+    if (!allowed.includes(b.role))
+      return res.status(400).render("error", { message: "Perfil inválido." });
+    if (Number(req.params.id) === req.session.user.id && b.active !== "on")
+      return res
+        .status(400)
+        .render("error", { message: "Você não pode inativar o próprio usuário." });
+    const duplicate = await db.query(
+      "SELECT 1 FROM users WHERE LOWER(email)=LOWER($1) AND id<>$2",
+      [b.email, req.params.id]
+    );
+    if (duplicate.rowCount) {
+      const { rows: clients } = await db.query(
+        "SELECT id,corporate_name FROM clients WHERE active=TRUE ORDER BY corporate_name"
+      );
+      return res.status(409).render("user-form", {
+        account: { ...b, id: req.params.id },
+        clients,
+        action: `/users/${req.params.id}`,
+        pageTitle: "Editar usuário",
+        error: "Já existe outro usuário com este e-mail.",
+      });
+    }
+    const clientId =
+      b.role === "CLIENTE" && b.client_id ? Number(b.client_id) : null;
+    await db.query(
+      "UPDATE users SET name=$1,email=$2,role=$3,client_id=$4,phone=$5,active=$6,must_change_password=$7,updated_at=NOW() WHERE id=$8",
+      [
+        b.name,
+        b.email.trim().toLowerCase(),
+        b.role,
+        clientId,
+        b.phone || null,
+        b.active === "on",
+        b.must_change_password === "on",
+        req.params.id,
+      ]
+    );
+    if (b.password)
+      await db.query(
+        "UPDATE users SET password_hash=$1,must_change_password=$2,updated_at=NOW() WHERE id=$3",
+        [
+          await bcrypt.hash(b.password, 12),
+          b.must_change_password === "on",
+          req.params.id,
+        ]
+      );
+    return res.redirect("/users");
+  })
+);
+
+app.post(
+  "/users/:id/toggle",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    if (Number(req.params.id) === req.session.user.id)
+      return res
+        .status(400)
+        .render("error", { message: "Você não pode inativar o próprio usuário." });
+    await db.query(
+      "UPDATE users SET active=NOT active,updated_at=NOW() WHERE id=$1",
+      [req.params.id]
+    );
+    return res.redirect("/users");
+  })
+);
+
+// Técnicos
+app.get(
+  "/technicians",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR"),
+  asyncRoute(async (req, res) => {
+    const { q = "", status = "" } = req.query,
+      params = [],
+      where = ["u.role='TECNICO'"];
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(
+        `(u.name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR COALESCE(p.specialty,'') ILIKE $${params.length})`
+      );
+    }
+    if (status) {
+      params.push(status === "ATIVO");
+      where.push(`u.active=$${params.length}`);
+    }
+    const { rows } = await db.query(
+      `SELECT u.id,u.name,u.email,u.active,u.created_at,p.* FROM users u LEFT JOIN technician_profiles p ON p.user_id=u.id WHERE ${where.join(
+        " AND "
+      )} ORDER BY u.name`,
+      params
+    );
+    return res.render("technicians", { technicians: rows, filters: { q, status } });
+  })
+);
+
+app.get("/technicians/new", requireAuth, allow("ADMIN"), (req, res) =>
+  res.render("technician-form", {
+    technician: null,
+    action: "/technicians",
+    pageTitle: "Novo técnico",
+    error: null,
+  })
+);
+
+app.post(
+  "/technicians",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    const b = req.body,
+      client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      const exists = await client.query(
+        "SELECT 1 FROM users WHERE LOWER(email)=LOWER($1)",
+        [b.email]
+      );
+      if (exists.rowCount) {
+        await client.query("ROLLBACK");
+        return res.status(409).render("technician-form", {
+          technician: b,
+          action: "/technicians",
+          pageTitle: "Novo técnico",
+          error: "Já existe um usuário com este e-mail.",
+        });
+      }
+      const hash = await bcrypt.hash(b.password, 12);
+      const user = await client.query(
+        "INSERT INTO users(name,email,password_hash,role,active) VALUES($1,$2,$3,'TECNICO',$4) RETURNING id",
+        [b.name, b.email.trim().toLowerCase(), hash, b.active === "on"]
+      );
+      await client.query(
+        "INSERT INTO technician_profiles(user_id,document,registration,phone,mobile,birth_date,hire_date,postal_code,address,address_number,address_complement,district,city,state,specialty,skill_level,hourly_cost,hourly_rate,workday_start,workday_end,weekly_hours,can_remote,can_on_site,vehicle_plate,emergency_contact,emergency_phone,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)",
+        [
+          user.rows[0].id,
+          b.document || null,
+          b.registration || null,
+          b.phone || null,
+          b.mobile || null,
+          b.birth_date || null,
+          b.hire_date || null,
+          b.postal_code || null,
+          b.address || null,
+          b.address_number || null,
+          b.address_complement || null,
+          b.district || null,
+          b.city || null,
+          b.state?.toUpperCase() || null,
+          b.specialty || null,
+          b.skill_level || "PLENO",
+          Number(b.hourly_cost || 0),
+          Number(b.hourly_rate || 0),
+          b.workday_start || null,
+          b.workday_end || null,
+          Number(b.weekly_hours || 40),
+          b.can_remote === "on",
+          b.can_on_site === "on",
+          b.vehicle_plate || null,
+          b.emergency_contact || null,
+          b.emergency_phone || null,
+          b.notes || null,
+        ]
+      );
+      await client.query("COMMIT");
+      return res.redirect("/technicians");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  })
+);
+
+app.get(
+  "/technicians/:id/edit",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    const { rows } = await db.query(
+      "SELECT u.id,u.name,u.email,u.active,p.* FROM users u LEFT JOIN technician_profiles p ON p.user_id=u.id WHERE u.id=$1 AND u.role='TECNICO'",
+      [req.params.id]
+    );
+    if (!rows[0])
+      return res.status(404).render("error", { message: "Técnico não encontrado" });
+    return res.render("technician-form", {
+      technician: rows[0],
+      action: `/technicians/${req.params.id}`,
+      pageTitle: "Editar técnico",
+      error: null,
+    });
+  })
+);
+
+app.post(
+  "/technicians/:id",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    const b = req.body,
+      client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      const duplicate = await client.query(
+        "SELECT 1 FROM users WHERE LOWER(email)=LOWER($1) AND id<>$2",
+        [b.email, req.params.id]
+      );
+      if (duplicate.rowCount) {
+        await client.query("ROLLBACK");
+        return res.status(409).render("technician-form", {
+          technician: { ...b, id: req.params.id },
+          action: `/technicians/${req.params.id}`,
+          pageTitle: "Editar técnico",
+          error: "Já existe outro usuário com este e-mail.",
+        });
+      }
+      await client.query(
+        "UPDATE users SET name=$1,email=$2,active=$3 WHERE id=$4 AND role='TECNICO'",
+        [b.name, b.email.trim().toLowerCase(), b.active === "on", req.params.id]
+      );
+      if (b.password)
+        await client.query("UPDATE users SET password_hash=$1 WHERE id=$2", [
+          await bcrypt.hash(b.password, 12),
+          req.params.id,
+        ]);
+      await client.query(
+        `INSERT INTO technician_profiles(user_id,document,registration,phone,mobile,birth_date,hire_date,termination_date,postal_code,address,address_number,address_complement,district,city,state,specialty,skill_level,hourly_cost,hourly_rate,workday_start,workday_end,weekly_hours,can_remote,can_on_site,vehicle_plate,emergency_contact,emergency_phone,notes,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,NOW()) ON CONFLICT(user_id) DO UPDATE SET document=EXCLUDED.document,registration=EXCLUDED.registration,phone=EXCLUDED.phone,mobile=EXCLUDED.mobile,birth_date=EXCLUDED.birth_date,hire_date=EXCLUDED.hire_date,termination_date=EXCLUDED.termination_date,postal_code=EXCLUDED.postal_code,address=EXCLUDED.address,address_number=EXCLUDED.address_number,address_complement=EXCLUDED.address_complement,district=EXCLUDED.district,city=EXCLUDED.city,state=EXCLUDED.state,specialty=EXCLUDED.specialty,skill_level=EXCLUDED.skill_level,hourly_cost=EXCLUDED.hourly_cost,hourly_rate=EXCLUDED.hourly_rate,workday_start=EXCLUDED.workday_start,workday_end=EXCLUDED.workday_end,weekly_hours=EXCLUDED.weekly_hours,can_remote=EXCLUDED.can_remote,can_on_site=EXCLUDED.can_on_site,vehicle_plate=EXCLUDED.vehicle_plate,emergency_contact=EXCLUDED.emergency_contact,emergency_phone=EXCLUDED.emergency_phone,notes=EXCLUDED.notes,updated_at=NOW()`,
+        [
+          req.params.id,
+          b.document || null,
+          b.registration || null,
+          b.phone || null,
+          b.mobile || null,
+          b.birth_date || null,
+          b.hire_date || null,
+          b.termination_date || null,
+          b.postal_code || null,
+          b.address || null,
+          b.address_number || null,
+          b.address_complement || null,
+          b.district || null,
+          b.city || null,
+          b.state?.toUpperCase() || null,
+          b.specialty || null,
+          b.skill_level || "PLENO",
+          Number(b.hourly_cost || 0),
+          Number(b.hourly_rate || 0),
+          b.workday_start || null,
+          b.workday_end || null,
+          Number(b.weekly_hours || 40),
+          b.can_remote === "on",
+          b.can_on_site === "on",
+          b.vehicle_plate || null,
+          b.emergency_contact || null,
+          b.emergency_phone || null,
+          b.notes || null,
+        ]
+      );
+      await client.query("COMMIT");
+      return res.redirect("/technicians");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  })
+);
+
+app.post(
+  "/technicians/:id/toggle",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    await db.query(
+      "UPDATE users SET active=NOT active WHERE id=$1 AND role='TECNICO'",
+      [req.params.id]
+    );
+    return res.redirect("/technicians");
+  })
+);
+
+// Clientes e fornecedores
+app.get(
+  "/clients",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const { q = "", status = "", partner_type = "" } = req.query,
+      params = [],
+      where = [];
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(
+        `(c.corporate_name ILIKE $${params.length} OR COALESCE(c.trade_name,'') ILIKE $${params.length} OR COALESCE(c.document,'') ILIKE $${params.length})`
+      );
+    }
+    if (status) {
+      params.push(status === "ATIVO");
+      where.push(`c.active=$${params.length}`);
+    }
+    if (partner_type) {
+      params.push(partner_type);
+      where.push(`c.partner_type=$${params.length}`);
+    }
+    const { rows } = await db.query(
+      `SELECT c.*,GREATEST(c.contract_hours-c.used_hours,0) balance_hours FROM clients c ${where.length ? "WHERE " + where.join(" AND ") : ""
+      } ORDER BY c.corporate_name`,
+      params
+    );
+    return res.render("clients", {
+      clients: rows,
+      filters: { q, status, partner_type },
+    });
+  })
+);
+
+app.get("/clients/new", requireAuth, allow("ADMIN", "COORDENADOR"), (req, res) =>
+  res.render("client-form", {
+    client: null,
+    action: "/clients",
+    pageTitle: "Nova pessoa",
+  })
+);
+
+app.post(
+  "/clients",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR"),
+  asyncRoute(async (req, res) => {
+    const b = req.body,
+      types = ["CLIENTE", "FORNECEDOR", "AMBOS"];
+    if (!types.includes(b.partner_type))
+      return res
+        .status(400)
+        .render("error", { message: "Tipo de relacionamento inválido." });
+    await db.query(
+      "INSERT INTO clients(corporate_name,trade_name,document,email,phone,contact_name,address,address_number,address_complement,district,city,state,postal_code,contract_hours,used_hours,hourly_rate,notes,active,partner_type,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW())",
+      [
+        b.corporate_name,
+        b.trade_name || null,
+        b.document || null,
+        b.email || null,
+        b.phone || null,
+        b.contact_name || null,
+        b.address || null,
+        b.address_number || null,
+        b.address_complement || null,
+        b.district || null,
+        b.city || null,
+        b.state?.toUpperCase() || null,
+        b.postal_code || null,
+        Number(b.contract_hours || 0),
+        Number(b.used_hours || 0),
+        Number(b.hourly_rate || 0),
+        b.notes || null,
+        b.active === "on",
+        b.partner_type,
+      ]
+    );
+    return res.redirect("/clients");
+  })
+);
+
+app.get(
+  "/clients/:id/edit",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR"),
+  asyncRoute(async (req, res) => {
+    const { rows } = await db.query("SELECT * FROM clients WHERE id=$1", [
+      req.params.id,
+    ]);
+    if (!rows[0])
+      return res.status(404).render("error", { message: "Pessoa não encontrada" });
+    return res.render("client-form", {
+      client: rows[0],
+      action: `/clients/${req.params.id}`,
+      pageTitle: "Editar pessoa",
+    });
+  })
+);
+
+app.post(
+  "/clients/:id",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR"),
+  asyncRoute(async (req, res) => {
+    const b = req.body,
+      types = ["CLIENTE", "FORNECEDOR", "AMBOS"];
+    if (!types.includes(b.partner_type))
+      return res
+        .status(400)
+        .render("error", { message: "Tipo de relacionamento inválido." });
+    await db.query(
+      "UPDATE clients SET corporate_name=$1,trade_name=$2,document=$3,email=$4,phone=$5,contact_name=$6,address=$7,address_number=$8,address_complement=$9,district=$10,city=$11,state=$12,postal_code=$13,contract_hours=$14,used_hours=$15,hourly_rate=$16,notes=$17,active=$18,partner_type=$19,updated_at=NOW() WHERE id=$20",
+      [
+        b.corporate_name,
+        b.trade_name || null,
+        b.document || null,
+        b.email || null,
+        b.phone || null,
+        b.contact_name || null,
+        b.address || null,
+        b.address_number || null,
+        b.address_complement || null,
+        b.district || null,
+        b.city || null,
+        b.state?.toUpperCase() || null,
+        b.postal_code || null,
+        Number(b.contract_hours || 0),
+        Number(b.used_hours || 0),
+        Number(b.hourly_rate || 0),
+        b.notes || null,
+        b.active === "on",
+        b.partner_type,
+        req.params.id,
+      ]
+    );
+    return res.redirect("/clients");
+  })
+);
+
+app.post(
+  "/clients/:id/toggle",
+  requireAuth,
+  allow("ADMIN"),
+  asyncRoute(async (req, res) => {
+    await db.query(
+      "UPDATE clients SET active=NOT active,updated_at=NOW() WHERE id=$1",
+      [req.params.id]
+    );
+    return res.redirect("/clients");
+  })
+);
+
+// Chamados
+app.get(
+  "/tickets",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const { date_from = "", date_to = "", status = "", client_id = "" } =
+      req.query,
+      params = [],
+      where = [];
+    if (date_from) {
+      params.push(date_from);
+      where.push(`t.opened_at::date >= $${params.length}::date`);
+    }
+    if (date_to) {
+      params.push(date_to);
+      where.push(`t.opened_at::date <= $${params.length}::date`);
+    }
+    if (status) {
+      params.push(status);
+      where.push(`t.status=$${params.length}`);
+    }
+    if (client_id) {
+      params.push(client_id);
+      where.push(`t.client_id=$${params.length}`);
+    }
+    const [tickets, clients] = await Promise.all([
+      db.query(
+        `SELECT t.*,c.corporate_name,u.name technician FROM tickets t JOIN clients c ON c.id=t.client_id LEFT JOIN users u ON u.id=t.technician_id ${where.length ? "WHERE " + where.join(" AND ") : ""
+        } ORDER BY t.opened_at DESC`,
+        params
+      ),
+      db.query("SELECT id,corporate_name FROM clients ORDER BY corporate_name"),
+    ]);
+    return res.render("tickets", {
+      tickets: tickets.rows,
+      clients: clients.rows,
+      filters: { date_from, date_to, status, client_id },
+    });
+  })
+);
+
+app.get(
+  "/tickets/new",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const [c, u] = await Promise.all([
+      db.query("SELECT * FROM clients ORDER BY corporate_name"),
+      db.query(
+        "SELECT id,name FROM users WHERE role='TECNICO' AND active=TRUE ORDER BY name"
+      ),
+    ]);
+    return res.render("ticket-form", { clients: c.rows, techs: u.rows });
+  })
+);
+
+app.post(
+  "/tickets",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const { client_id, title, description, priority, technician_id } = req.body;
+    const number = `CH-${Date.now().toString().slice(-8)}`;
+    await db.query(
+      "INSERT INTO tickets(number,client_id,title,description,priority,technician_id,opened_by) VALUES($1,$2,$3,$4,$5,$6,$7)",
+      [
+        number,
+        client_id,
+        title,
+        description,
+        priority,
+        technician_id || null,
+        req.session.user.id,
+      ]
+    );
+    return res.redirect("/tickets");
+  })
+);
+
+app.post(
+  "/tickets/:id/status",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const allowed = [
+      "ABERTO",
+      "EM_ATENDIMENTO",
+      "AGUARDANDO_CLIENTE",
+      "RESOLVIDO",
+      "FECHADO",
+      "CANCELADO",
+    ];
+    const status = String(req.body.status || "").toUpperCase();
+    if (!allowed.includes(status))
+      return res
+        .status(400)
+        .render("error", { message: "Status de chamado inválido." });
+    await db.query(
+      "UPDATE tickets SET status=$1::varchar,closed_at=CASE WHEN $1::varchar IN ('FECHADO','RESOLVIDO','CANCELADO') THEN NOW() ELSE NULL END WHERE id=$2::integer",
+      [status, Number(req.params.id)]
+    );
+    return res.redirect("/tickets");
+  })
+);
+
+app.get(
+  "/tickets/:id/edit",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const [ticket, clients, techs] = await Promise.all([
+      db.query("SELECT * FROM tickets WHERE id=$1", [req.params.id]),
+      db.query("SELECT * FROM clients ORDER BY corporate_name"),
+      db.query(
+        "SELECT id,name FROM users WHERE role='TECNICO' AND active=TRUE ORDER BY name"
+      ),
+    ]);
+    if (!ticket.rows[0])
+      return res.status(404).render("error", { message: "Chamado não encontrado" });
+    return res.render("ticket-form", {
+      ticket: ticket.rows[0],
+      clients: clients.rows,
+      techs: techs.rows,
+    });
+  })
+);
+
+// Agenda
+app.get(
+  "/agenda",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const { date_from = "", date_to = "", status = "", client_id = "" } =
+      req.query,
+      params = [],
+      where = [];
+    if (req.session.user.role === "TECNICO") {
+      params.push(req.session.user.id);
+      where.push(`a.technician_id=$${params.length}`);
+    }
+    if (date_from) {
+      params.push(date_from);
+      where.push(`a.start_at::date >= $${params.length}::date`);
+    }
+    if (date_to) {
+      params.push(date_to);
+      where.push(`a.start_at::date <= $${params.length}::date`);
+    }
+    if (status) {
+      params.push(status);
+      where.push(`a.status=$${params.length}`);
+    }
+    if (client_id) {
+      params.push(client_id);
+      where.push(`a.client_id=$${params.length}`);
+    }
+    const [items, clients] = await Promise.all([
+      db.query(
+        `SELECT a.*,u.name technician,c.corporate_name,t.number ticket_number,EXISTS(SELECT 1 FROM rats r WHERE r.appointment_id=a.id) has_rat FROM appointments a JOIN users u ON u.id=a.technician_id JOIN clients c ON c.id=a.client_id LEFT JOIN tickets t ON t.id=a.ticket_id ${where.length ? "WHERE " + where.join(" AND ") : ""
+        } ORDER BY a.start_at DESC`,
+        params
+      ),
+      db.query("SELECT id,corporate_name FROM clients ORDER BY corporate_name"),
+    ]);
+    return res.render("agenda", {
+      items: items.rows,
+      clients: clients.rows,
+      filters: { date_from, date_to, status, client_id },
+    });
+  })
+);
+
+async function agendaFormData() {
+  const [clients, techs, tickets] = await Promise.all([
+    db.query(
+      "SELECT id,corporate_name FROM clients WHERE active=TRUE ORDER BY corporate_name"
+    ),
+    db.query(
+      "SELECT id,name FROM users WHERE role='TECNICO' AND active=TRUE ORDER BY name"
+    ),
+    db.query(
+      "SELECT id,number,title,client_id FROM tickets WHERE status NOT IN ('FECHADO','CANCELADO') ORDER BY opened_at DESC"
+    ),
+  ]);
+  return { clients: clients.rows, techs: techs.rows, tickets: tickets.rows };
+}
+
+app.get(
+  "/agenda/new",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR"),
+  asyncRoute(async (req, res) => {
+    return res.render("agenda-form", {
+      appointment: null,
+      ...(await agendaFormData()),
+      action: "/agenda",
+      pageTitle: "Novo agendamento",
+      error: null,
+    });
+  })
+);
+
+app.post(
+  "/agenda",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR"),
+  asyncRoute(async (req, res) => {
+    const b = req.body;
+    const conflict = await db.query(
+      "SELECT 1 FROM appointments WHERE technician_id=$1 AND status<>'CANCELADO' AND start_at<$3 AND end_at>$2 LIMIT 1",
+      [b.technician_id, b.start_at, b.end_at]
+    );
+    if (conflict.rowCount)
+      return res.status(409).render("agenda-form", {
+        appointment: b,
+        ...(await agendaFormData()),
+        action: "/agenda",
+        pageTitle: "Novo agendamento",
+        error: "O técnico já possui atendimento neste período.",
+      });
+    await db.query(
+      "INSERT INTO appointments(client_id,ticket_id,technician_id,title,service_type,status,start_at,end_at,location,contact_name,contact_phone,notes) VALUES($1,$2,$3,$4,$5,'AGENDADO',$6,$7,$8,$9,$10,$11)",
+      [
+        b.client_id,
+        b.ticket_id || null,
+        b.technician_id,
+        b.title,
+        b.service_type,
+        b.start_at,
+        b.end_at,
+        b.location || null,
+        b.contact_name || null,
+        b.contact_phone || null,
+        b.notes || null,
+      ]
+    );
+    return res.redirect("/agenda");
+  })
+);
+
+app.get(
+  "/agenda/:id/edit",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR"),
+  asyncRoute(async (req, res) => {
+    const data = await agendaFormData();
+    const appointment = await db.query(
+      "SELECT * FROM appointments WHERE id=$1",
+      [req.params.id]
+    );
+    if (!appointment.rows[0])
+      return res
+        .status(404)
+        .render("error", { message: "Agendamento não encontrado" });
+    return res.render("agenda-form", {
+      appointment: appointment.rows[0],
+      ...data,
+      action: `/agenda/${req.params.id}`,
+      pageTitle: "Editar agendamento",
+      error: null,
+    });
+  })
+);
+
+app.post(
+  "/agenda/:id",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR"),
+  asyncRoute(async (req, res) => {
+    const b = req.body;
+    const conflict = await db.query(
+      "SELECT 1 FROM appointments WHERE technician_id=$1 AND id<>$2 AND status<>'CANCELADO' AND start_at<$4 AND end_at>$3 LIMIT 1",
+      [b.technician_id, req.params.id, b.start_at, b.end_at]
+    );
+    if (conflict.rowCount)
+      return res.status(409).render("error", {
+        message: "O técnico já possui atendimento neste período.",
+      });
+    await db.query(
+      "UPDATE appointments SET client_id=$1,ticket_id=$2,technician_id=$3,title=$4,service_type=$5,status=$6,start_at=$7,end_at=$8,location=$9,contact_name=$10,contact_phone=$11,notes=$12,updated_at=NOW() WHERE id=$13",
+      [
+        b.client_id,
+        b.ticket_id || null,
+        b.technician_id,
+        b.title,
+        b.service_type,
+        b.status,
+        b.start_at,
+        b.end_at,
+        b.location || null,
+        b.contact_name || null,
+        b.contact_phone || null,
+        b.notes || null,
+        req.params.id,
+      ]
+    );
+    return res.redirect("/agenda");
+  })
+);
+
+app.post(
+  "/agenda/:id/status",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR", "TECNICO"),
+  asyncRoute(async (req, res) => {
+    await db.query(
+      "UPDATE appointments SET status=$1,updated_at=NOW() WHERE id=$2",
+      [req.body.status, req.params.id]
+    );
+    return res.redirect("/agenda");
+  })
+);
+
+async function ratFormData() {
+  const [tickets, techs, clients, fiscalItems] = await Promise.all([
+    db.query(
+      "SELECT id,number,title,client_id FROM tickets ORDER BY opened_at DESC"
+    ),
+    db.query(
+      "SELECT id,name FROM users WHERE role='TECNICO' AND active=TRUE ORDER BY name"
+    ),
+    db.query("SELECT id,corporate_name FROM clients ORDER BY corporate_name"),
+    db.query(
+      "SELECT id,code,description,unit,sale_price,national_service_code,nbs_code FROM catalog_items WHERE item_type='SERVICO' AND active=TRUE ORDER BY description"
+    ),
+  ]);
+  return {
+    tickets: tickets.rows,
+    techs: techs.rows,
+    clients: clients.rows,
+    fiscalItems: fiscalItems.rows,
+  };
+}
+
+app.get(
+  "/agenda/:id/rat",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR", "TECNICO"),
+  asyncRoute(async (req, res) => {
+    const { rows } = await db.query(
+      "SELECT a.*,c.corporate_name,u.name technician FROM appointments a JOIN clients c ON c.id=a.client_id JOIN users u ON u.id=a.technician_id WHERE a.id=$1",
+      [req.params.id]
+    );
+    const a = rows[0];
+    if (!a)
+      return res
+        .status(404)
+        .render("error", { message: "Agendamento não encontrado" });
+    if (
+      req.session.user.role === "TECNICO" &&
+      a.technician_id !== req.session.user.id
+    )
+      return res.status(403).render("error", {
+        message: "Este agendamento pertence a outro técnico.",
+      });
+    if (
+      (await db.query("SELECT id FROM rats WHERE appointment_id=$1", [a.id]))
+        .rowCount
+    )
+      return res.redirect("/rats");
+    const localDate = (d) =>
+      new Date(d).toLocaleDateString("en-CA", {
+        timeZone: "America/Sao_Paulo",
+      });
+    const localTime = (d) =>
+      new Date(d).toLocaleTimeString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+    return res.render("rat-form", {
+      ...(await ratFormData()),
+      appointment: a,
+      prefill: {
+        appointment_id: a.id,
+        client_id: a.client_id,
+        ticket_id: a.ticket_id,
+        technician_id: a.technician_id,
+        service_date: localDate(a.start_at),
+        start_time: localTime(a.start_at),
+        end_time: localTime(a.end_at),
+        activities: a.notes || a.title,
+      },
+      action: "/rats",
+      pageTitle: "Novo RAT da agenda",
+      error: null,
+    });
+  })
+);
+
+app.get(
+  "/rats",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const {
+      date_from = "",
+      date_to = "",
+      status = "",
+      client_id = "",
+      billing_status = "",
+    } = req.query,
+      params = [],
+      where = [];
+    if (date_from) {
+      params.push(date_from);
+      where.push(`r.service_date >= $${params.length}::date`);
+    }
+    if (date_to) {
+      params.push(date_to);
+      where.push(`r.service_date <= $${params.length}::date`);
+    }
+    if (status === "APROVADO") where.push("r.customer_approved=TRUE");
+    if (status === "PENDENTE") where.push("r.customer_approved=FALSE");
+    if (client_id) {
+      params.push(client_id);
+      where.push(`r.client_id=$${params.length}::int`);
+    }
+    if (billing_status === "DISPONIVEL")
+      where.push(
+        "r.customer_approved=TRUE AND r.billed_at IS NULL AND r.catalog_item_id IS NOT NULL"
+      );
+    if (billing_status === "SEM_ITEM") where.push("r.catalog_item_id IS NULL");
+    if (billing_status === "FATURADO") where.push("r.billed_at IS NOT NULL");
+    if (req.session.user.role === "TECNICO") {
+      params.push(req.session.user.id);
+      where.push(`r.technician_id=$${params.length}::int`);
+    }
+    const [rats, clients] = await Promise.all([
+      db.query(
+        `SELECT r.*,t.number ticket,u.name technician,c.corporate_name,a.title appointment_title,ci.code fiscal_code,ci.description fiscal_item,CASE WHEN r.customer_approved AND r.billed_at IS NULL AND r.catalog_item_id IS NOT NULL THEN TRUE ELSE FALSE END billing_available FROM rats r LEFT JOIN tickets t ON t.id=r.ticket_id JOIN clients c ON c.id=r.client_id JOIN users u ON u.id=r.technician_id LEFT JOIN appointments a ON a.id=r.appointment_id LEFT JOIN catalog_items ci ON ci.id=r.catalog_item_id ${where.length ? "WHERE " + where.join(" AND ") : ""
+        } ORDER BY r.service_date DESC,r.id DESC`,
+        params
+      ),
+      db.query("SELECT id,corporate_name FROM clients ORDER BY corporate_name"),
+    ]);
+    return res.render("rats", {
+      rats: rats.rows,
+      clients: clients.rows,
+      filters: { date_from, date_to, status, client_id, billing_status },
+    });
+  })
+);
+
+app.get(
+  "/rats/new",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR", "TECNICO"),
+  asyncRoute(async (req, res) => {
+    return res.render("rat-form", {
+      ...(await ratFormData()),
+      appointment: null,
+      prefill: {
+        technician_id:
+          req.session.user.role === "TECNICO" ? req.session.user.id : null,
+      },
+      action: "/rats",
+      pageTitle: "Novo RAT",
+      error: null,
+    });
+  })
+);
+
+app.post(
+  "/rats",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR", "TECNICO"),
+  asyncRoute(async (req, res) => {
+    const b = req.body;
+    const fiscal = await db.query(
+      "SELECT id FROM catalog_items WHERE id=$1 AND item_type='SERVICO' AND active=TRUE",
+      [b.catalog_item_id]
+    );
+    if (!fiscal.rowCount)
+      return res.status(400).render("error", {
+        message: "Selecione um item fiscal de serviço ativo para o RAT.",
+      });
+    const start = new Date(`2000-01-01T${b.start_time}:00`),
+      end = new Date(`2000-01-01T${b.end_time}:00`);
+    if (end <= start)
+      return res.status(400).render("error", {
+        message: "O horário final deve ser posterior ao inicial.",
+      });
+    const billable = Math.max(
+      0,
+      Math.round((end - start) / 60000) -
+      Number(b.break_minutes || 0) +
+      Number(b.travel_minutes || 0)
+    );
+    const number = `RAT-${Date.now().toString().slice(-8)}`;
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        "INSERT INTO rats(number,appointment_id,client_id,ticket_id,technician_id,catalog_item_id,service_date,start_time,end_time,break_minutes,travel_minutes,billable_minutes,activities,materials,customer_name,customer_approved) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)",
+        [
+          number,
+          b.appointment_id || null,
+          b.client_id,
+          b.ticket_id || null,
+          b.technician_id,
+          b.catalog_item_id,
+          b.service_date,
+          b.start_time,
+          b.end_time,
+          Number(b.break_minutes || 0),
+          Number(b.travel_minutes || 0),
+          billable,
+          b.activities,
+          b.materials || null,
+          b.customer_name || null,
+          b.customer_approved === "on",
+        ]
+      );
+      if (b.appointment_id)
+        await client.query(
+          "UPDATE appointments SET status='CONCLUIDO',updated_at=NOW() WHERE id=$1",
+          [b.appointment_id]
+        );
+      await client.query("COMMIT");
+      return res.redirect("/rats");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  })
+);
+
+app.get(
+  "/rats/:id/edit",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR", "TECNICO"),
+  asyncRoute(async (req, res) => {
+    const rat = await db.query("SELECT * FROM rats WHERE id=$1", [
+      req.params.id,
+    ]);
+    const r = rat.rows[0];
+    if (!r)
+      return res.status(404).render("error", { message: "RAT não encontrado" });
+    if (
+      req.session.user.role === "TECNICO" &&
+      r.technician_id !== req.session.user.id
+    )
+      return res.status(403).render("error", {
+        message: "Você não pode editar o RAT de outro técnico.",
+      });
+    return res.render("rat-form", {
+      ...(await ratFormData()),
+      appointment: null,
+      prefill: {
+        appointment_id: r.appointment_id,
+        client_id: r.client_id,
+        ticket_id: r.ticket_id,
+        technician_id: r.technician_id,
+        catalog_item_id: r.catalog_item_id,
+        service_date: new Date(r.service_date).toLocaleDateString("en-CA", {
+          timeZone: "UTC",
+        }),
+        start_time: String(r.start_time).slice(0, 5),
+        end_time: String(r.end_time).slice(0, 5),
+        activities: r.activities,
+        materials: r.materials,
+        customer_name: r.customer_name,
+        break_minutes: r.break_minutes,
+        travel_minutes: r.travel_minutes,
+        customer_approved: r.customer_approved,
+      },
+      action: `/rats/${r.id}`,
+      pageTitle: `Editar ${r.number}`,
+      error: null,
+    });
+  })
+);
+
+app.post(
+  "/rats/:id",
+  requireAuth,
+  allow("ADMIN", "COORDENADOR", "TECNICO"),
+  asyncRoute(async (req, res) => {
+    const b = req.body;
+    const current = await db.query("SELECT * FROM rats WHERE id=$1", [
+      req.params.id,
+    ]);
+    const rat = current.rows[0];
+    if (!rat)
+      return res.status(404).render("error", { message: "RAT não encontrado" });
+    if (rat.billed_at)
+      return res.status(400).render("error", {
+        message: "RAT já faturado não pode ser alterado.",
+      });
+    if (
+      req.session.user.role === "TECNICO" &&
+      rat.technician_id !== req.session.user.id
+    )
+      return res.status(403).render("error", {
+        message: "Você não pode editar o RAT de outro técnico.",
+      });
+    const fiscal = await db.query(
+      "SELECT id FROM catalog_items WHERE id=$1 AND item_type='SERVICO' AND active=TRUE",
+      [b.catalog_item_id]
+    );
+    if (!fiscal.rowCount)
+      return res.status(400).render("error", {
+        message: "Selecione um item fiscal de serviço ativo.",
+      });
+    const start = new Date(`2000-01-01T${b.start_time}:00`),
+      end = new Date(`2000-01-01T${b.end_time}:00`);
+    if (end <= start)
+      return res.status(400).render("error", {
+        message: "O horário final deve ser posterior ao inicial.",
+      });
+    const billable = Math.max(
+      0,
+      Math.round((end - start) / 60000) -
+      Number(b.break_minutes || 0) +
+      Number(b.travel_minutes || 0)
+    );
+    await db.query(
+      "UPDATE rats SET appointment_id=$1,client_id=$2,ticket_id=$3,technician_id=$4,catalog_item_id=$5,service_date=$6,start_time=$7,end_time=$8,break_minutes=$9,travel_minutes=$10,billable_minutes=$11,activities=$12,materials=$13,customer_name=$14,customer_approved=$15,updated_at=NOW() WHERE id=$16",
+      [
+        b.appointment_id || null,
+        b.client_id,
+        b.ticket_id || null,
+        b.technician_id,
+        b.catalog_item_id,
+        b.service_date,
+        b.start_time,
+        b.end_time,
+        Number(b.break_minutes || 0),
+        Number(b.travel_minutes || 0),
+        billable,
+        b.activities,
+        b.materials || null,
+        b.customer_name || null,
+        b.customer_approved === "on",
+        req.params.id,
+      ]
+    );
+    return res.redirect("/rats");
+  })
+);
+
+app.use(modulesRouter);
+app.use(ratReportRouter);
+app.use(financeRouter);
+app.use(catalogRouter);
+app.use(billingRouter);
+app.use(nfseRouter);
+app.use(nfseNationalRouter);
+app.use(fiscalRouter);
+app.use(movementsRouter);
+
+app.get(
+  '/rats/billing',
+  requireAuth,
+  async (req, res) => {
+    const { rows } = await
+      db.query(`
+            SELECT r.*,c.corporate_name,u.name technician,ci.code fiscal_code,
+            ci.description fiscal_item,
+            COALESCE(c.hourly_rate,ci.sale_price)unit_price,
+            (r.billable_minutes/60.0)*COALESCE(NULLIF(c.hourly_rate,0),ci.sale_price)total 
+            FROM rats r 
+            JOIN clients c ON c.id=r.client_id 
+            JOIN users u ON u.id=r.technician_id 
+            JOIN catalog_items ci ON ci.id=r.catalog_item_id 
+            WHERE r.customer_approved=TRUE 
+            AND r.billed_at IS NULL 
+            AND r.billable_minutes>0 
+            ORDER BY c.corporate_name,r.service_date`);
+    res.render('billing/rat-selection', {
+      rats: rows
+    })
+  });
+
+app.post(
+  '/rats/billing/create',
+  requireAuth,
+  async (req, res) => {
+    const ids = [].concat(req.body.rat_ids || []).map(Number),
+      c = await db.connect();
+    try {
+      await c.query('BEGIN');
+      const { rows } = await
+        c.query(`
+                SELECT r.*,cl.corporate_name,
+                COALESCE(NULLIF(cl.hourly_rate,0),ci.sale_price)unit_price,
+                ci.* 
+                FROM rats r 
+                JOIN clients cl ON cl.id=r.client_id 
+                JOIN catalog_items ci ON ci.id=r.catalog_item_id 
+                WHERE r.id=ANY($1::int[])
+                AND r.customer_approved=TRUE 
+                AND r.billed_at IS NULL FOR UPDATE`,
+          [ids]);
+      if (!rows.length || new Set(rows.map(x => x.client_id)).size !== 1)
+        throw Error('Selecione RATs disponíveis do mesmo cliente.');
+
+      const today = new Date().toISOString().slice(0, 10),
+        m = (await c.query(`
+                    INSERT INTO billing_movements
+                    (number,client_id,competence,date_issued,due_date,created_by)
+                    VALUES($1,$2,$3,$3,$4,$5)RETURNING id`,
+          [`MOV-RAT-${Date.now()}`, rows[0].client_id,
+            today,
+          req.body.due_date || today,
+          req.session.user.id]
+        )
+        ).rows[0];
+      let seq = 0;
+      for (const [key, group] of Object.entries(Object.groupBy(
+        rows,
+        x => `${x.catalog_item_id}-${x.unit_price}`))) {
+        seq++;
+        const qty = group.reduce((s, x) => s + Number(x.billable_minutes) / 60, 0),
+          it = await add(c, m.id, {
+            id: group[0].catalog_item_id,
+            service_date: group[0].service_date
+          },
+            qty,
+            group[0].unit_price, seq);
+        for (const r of group) await
+          c.query(`
+                        INSERT INTO billing_movement_rats
+                        (movement_id,movement_item_id,rat_id,billable_minutes,quantity_hours,
+                        unit_price,total)
+                        VALUES($1,$2,$3,$4,$5,$6,$7)
+                        `,
+            [
+              m.id,
+              it.id,
+              r.id,
+              r.billable_minutes,
+              Number(r.billable_minutes) / 60,
+              r.unit_price,
+              Number(r.billable_minutes) / 60 * Number(r.unit_price)])
+      } await rec(c, m.id);
+      await c.query('UPDATE rats SET billed_at=NOW() WHERE id=ANY($1::int[])',
+        [ids]);
+      await c.query('COMMIT');
+      res.redirect(`/billing/${m.id}`)
+    } catch (e) {
+      await c.query('ROLLBACK');
+      res.redirect(`/rats/billing?error=${encodeURIComponent(e.message)}`)
+    } finally {
+      c.release()
+    }
+  });
+  
+  
+  app.use(stockManagementRouter);
+
+  app.use((req, res) => {
+  if (res.headersSent) return;
+  return res.status(404).render("error", {
+    message: `Página não encontrada: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+app.use((err, req, res, next) => {
+  console.error("Erro na requisição:", {
+    method: req.method,
+    url: req.originalUrl,
+    error: err,
+  });
+  if (res.headersSent) return next(err);
+  return res.status(500).render("error", {
+    message:
+      process.env.NODE_ENV === "development"
+        ? err.message
+        : "Erro interno. Consulte o terminal.",
+  });
+});
+
+
+app.listen(port, () => console.log(`Sistema em http://localhost:${port}`));

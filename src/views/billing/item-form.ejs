@@ -1,0 +1,87 @@
+<%- include('../partials/head') %>
+
+<header>
+  <div>
+    <h1><%= pageTitle %></h1>
+    <p><%= item.number %></p>
+  </div>
+  <a class="small-button" href="/billing/<%= item.movement_id %>">Voltar</a>
+</header>
+
+<form class="card form" method="post" action="<%= action %>">
+  <div class="form-grid">
+    <label>
+      Tipo *
+      <select name="item_type">
+        <option value="SERVICO" <%= item.item_type === 'SERVICO' ? 'selected' : '' %>>Serviço</option>
+        <option value="PRODUTO" <%= item.item_type === 'PRODUTO' ? 'selected' : '' %>>Produto</option>
+      </select>
+    </label>
+
+    <label>
+      Código
+      <input name="code" value="<%= item.code || '' %>">
+    </label>
+
+    <label class="span-2">
+      Descrição *
+      <input name="description" value="<%= item.description %>" required>
+    </label>
+
+    <label>
+      Data do serviço
+      <input
+        type="date"
+        name="service_date"
+        value="<%= item.service_date ? new Date(item.service_date).toISOString().slice(0, 10) : '' %>"
+      >
+    </label>
+
+    <label>
+      Unidade
+      <input name="unit" value="<%= item.unit %>">
+    </label>
+
+    <label>
+      Quantidade/horas
+      <input type="number" name="quantity" step="0.0001" value="<%= item.quantity %>" required>
+    </label>
+
+    <label>
+      Valor unitário
+      <input type="number" name="unit_price" step="0.0001" value="<%= item.unit_price %>" required>
+    </label>
+
+    <label>
+      Desconto
+      <input type="number" name="discount" step="0.01" value="<%= item.discount %>">
+    </label>
+
+    <label>
+      ISS %
+      <input type="number" name="iss_rate" step="0.0001" value="<%= item.iss_rate %>">
+    </label>
+
+    <label>
+      Código serviço nacional
+      <input name="national_service_code" value="<%= item.national_service_code || '' %>">
+    </label>
+
+    <label>
+      NBS
+      <input name="nbs_code" value="<%= item.nbs_code || '' %>">
+    </label>
+
+    <label class="span-2">
+      Observações
+      <textarea name="notes"><%= item.notes || '' %></textarea>
+    </label>
+  </div>
+
+  <div class="form-actions">
+    <a class="small-button secondary" href="/billing/<%= item.movement_id %>">Cancelar</a>
+    <button>Salvar detalhe</button>
+  </div>
+</form>
+
+<%- include('../partials/foot') %>

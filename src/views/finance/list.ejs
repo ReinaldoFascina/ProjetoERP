@@ -1,0 +1,68 @@
+<%- include('../partials/head') %>
+
+<header>
+    <div>
+        <h1>Contas a pagar e receber</h1>
+        <p>Títulos manuais e automáticos em uma única visão.</p>
+    </div><div class="actions">
+        <a class="button" href="/finance/new">Novo título</a>
+        <a class="small-button" href="/purchases/new">Entrada NF/Recibo</a>
+    </div>
+</header>
+<section class="metrics">
+    <div class="card">
+        <span>A receber</span>
+        <b>R$ <%= Number(summary.receivable).toFixed(2) %>
+        </b>
+    </div>
+    <div class="card">
+        <span>A pagar</span>
+        <b>R$ <%= Number(summary.payable).toFixed(2) %></b>
+    </div>
+    <div class="card">
+        <span>Recebido</span>
+        <b>R$ <%= Number(settlements.received).toFixed(2) %></b>
+    </div>
+    <div class="card">
+        <span>Pago</span>
+        <b>R$ <%= Number(settlements.paid).toFixed(2) %></b>
+    </div>
+</section>
+<form class="card filters">
+    <label>Tipo<select name="type"><option value="">Todos</option><option value="R" <%= filters.type==='R'?'selected':'' %>>Receber</option><option value="P" <%= filters.type==='P'?'selected':'' %>>Pagar</option></select></label>
+    <label>Status<select name="status"><option value="">Todos</option><% ['ABERTO','PARCIAL','BAIXADO','CANCELADO'].forEach(x=>{ %><option value="<%= x %>" <%= filters.status===x?'selected':'' %>><%= x %></option><% }) %></select>
+    </label>
+    <label>Vencimento de<input type="date" name="from" value="<%= filters.from %>"></label>
+    <label>Vencimento até<input type="date" name="to" value="<%= filters.to %>"></label>
+    <button>Filtrar</button>
+</form>
+<section class="card">
+    <div class="table">
+    <table>
+        <tr>
+            <th>Tipo</th>
+            <th>Número</th>
+            <th>Pessoa</th>
+            <th>Vencimento</th>
+            <th>Saldo</th>
+            <th>Status</th>
+            <th>Ações</th>
+        </tr>
+        <% titles.forEach(x=>{ %>
+            <tr>
+                <td><%= x.title_type==='R'?'Receber':'Pagar' %></td>
+                <td><%= x.number %></td>
+                <td><%= x.party_name %></td>
+                <td><%= new Date(x.due_date).toLocaleDateString('pt-BR',{timeZone:'UTC'}) %></td>
+                <td>R$ <%= Number(x.open_amount).toFixed(2) %></td>
+                <td><%= x.status %></td>
+                <td><a class="small-button" href="/finance/<%= x.id %>">Abrir</a>
+                    <% if(['ABERTO','PARCIAL'].includes(x.status)){ %>
+                        <a class="small-button" href="/finance/<%= x.id %>">Baixar</a>
+                    <% } %>
+                </td>
+        <% }) %>
+    </table>
+    </div>
+</section>
+<%- include('../partials/foot') %>

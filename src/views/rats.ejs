@@ -1,0 +1,44 @@
+<%- include('partials/head') %>
+<header>
+    <h1>RAT e horas</h1>
+    <div>
+        <a class="button" href="/rats/new">Novo RAT</a> 
+        <a class="button" href="/rats/billing">Faturar selecionados</a>
+    </div>
+</header>
+<section class="card">
+    <div class="table">
+    <table>
+        <tr>
+            <th>RAT</th>
+            <th>Cliente</th>
+            <th>Técnico</th>
+            <th>Data</th>
+            <th>Horas</th>
+            <th>Item fiscal</th>
+            <th>Status</th>
+            <th>Relatório</th>
+        </tr>
+        <% rats.forEach(x=>{ %>
+        <tr>
+            <td><a class="small-button warning" href="/rats/<%= x.id %>/edit"><%= x.number %></a></td>
+            <td><%= x.corporate_name %></td>
+            <td><%= x.technician %></td>
+            <td><%= new Date(x.service_date).toLocaleDateString('pt-BR',{timeZone:'UTC'}) %></td>
+            <td><%= (x.billable_minutes/60).toFixed(2) %></td>
+            <td><%= x.fiscal_code||'Não vinculado' %></td>
+            <td><%= x.billed_at?'Faturado':x.customer_approved?'Disponível':'Pendente' %></td>
+            <td>
+                <form method="post" action="/rats/<%= x.id %>/approval-link">
+                    <button class="small-button">Gerar PDF + QR</button>
+                </form>
+                <% if(x.customer_approved){ %>
+                    <a class="small-button" href="/rats/<%= x.id %>/report.pdf">Baixar assinado</a>
+                <% } %>
+            </td>
+        </tr>
+        <% }) %>
+    </table>
+    </div>
+</section>
+<%- include('partials/foot') %>

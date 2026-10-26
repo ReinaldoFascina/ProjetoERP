@@ -1,0 +1,13 @@
+<% if (activeModule.key === "expimpo" && canManage) { %>
+  <div class="nav-group">
+    <button class="submenu-toggle" type="button" aria-expanded="false">
+      <span class="nav-icon">D</span><span class="nav-label">DUIMP</span><span class="submenu-arrow">⌄</span>
+    </button>
+    <div class="submenu">
+      <a href="/comex/duimp" data-path="/comex/duimp">Declarações e obrigações</a>
+      <a href="/comex/importers" data-path="/comex/importers">Importadores por cliente</a>
+      <a href="/comex/catalog" data-path="/comex/catalog">Catálogo de produtos</a>
+      <a href="/comex/operators" data-path="/comex/operators">Operadores estrangeiros</a>
+    </div>
+  </div>
+<% } %>

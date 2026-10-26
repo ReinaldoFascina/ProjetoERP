@@ -1,0 +1,384 @@
+<%- include('../partials/head') %>
+
+<%
+  const currentTicket = ticket || {};
+  const ticketInteractions = Array.isArray(interactions) ? interactions : [];
+  const ticketAssignments = Array.isArray(assignments) ? assignments : [];
+  const availableGroups = Array.isArray(groups) ? groups : [];
+  const availableUsers = Array.isArray(users) ? users : [];
+
+  const messageInteractions = ticketInteractions.filter((item) =>
+    ["MESSAGE", "INTERNAL_NOTE"].includes(item.interaction_type)
+  );
+
+  const discussionInteractions = ticketInteractions.filter((item) =>
+    item.interaction_type === "DISCUSSION"
+  );
+
+  const conclusionInteractions = ticketInteractions.filter((item) =>
+    item.interaction_type === "CONCLUSION"
+  );
+
+  const solutionInteractions = ticketInteractions.filter((item) =>
+    item.interaction_type === "SOLUTION"
+  );
+
+  const formatDateTime = (value) => {
+    if (!value) {
+      return "-";
+    }
+
+    return new Date(value).toLocaleString("pt-BR");
+  };
+%>
+
+<header class="page-header">
+  <div>
+    <span class="module">AT · CRM Técnico</span>
+    <h1><%= currentTicket.protocol || "Chamado" %> · <%= currentTicket.title || "Sem título" %></h1>
+    <p>
+      <%= currentTicket.channel || "PORTAL" %>
+      · <%= currentTicket.support_type || "SUPPORT" %>
+      · <%= currentTicket.stage || "TRIAGE" %>
+    </p>
+  </div>
+
+  <a class="small-button secondary" href="/technical-crm/tickets">
+    Voltar
+  </a>
+</header>
+
+<section class="movement-master card">
+  <div>
+    <span>Status</span>
+    <strong><%= currentTicket.status || "-" %></strong>
+  </div>
+
+  <div>
+    <span>Solicitante</span>
+    <strong><%= currentTicket.requester_email || "-" %></strong>
+  </div>
+
+  <div>
+    <span>Grupo</span>
+    <strong><%= currentTicket.group_name || "-" %></strong>
+  </div>
+
+  <div>
+    <span>Responsável</span>
+    <strong><%= currentTicket.assigned_name || "-" %></strong>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <div>
+      <h2>Dados do atendimento</h2>
+      <p>Defina grupo, responsável, etapa, canal e tipo do atendimento.</p>
+    </div>
+  </div>
+
+  <form
+    class="form"
+    method="post"
+    action="/technical-crm/tickets/<%= currentTicket.id %>/operational-data"
+  >
+    <div class="form-grid">
+      <label>
+        Grupo técnico
+        <select name="assigned_group_id">
+          <option value="">Sem grupo</option>
+          <% availableGroups.forEach((group) => { %>
+            <option
+              value="<%= group.id %>"
+              <%= Number(currentTicket.assigned_group_id) === Number(group.id) ? "selected" : "" %>
+            >
+              <%= group.name %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Responsável
+        <select name="assigned_user_id">
+          <option value="">Sem responsável</option>
+          <% availableUsers.forEach((technicalUser) => { %>
+            <option
+              value="<%= technicalUser.id %>"
+              <%= Number(currentTicket.assigned_user_id) === Number(technicalUser.id) ? "selected" : "" %>
+            >
+              <%= technicalUser.name %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Etapa atual
+        <select name="stage">
+          <% ["TRIAGE", "ASSIGNED", "IN_PROGRESS", "WAITING_REQUESTER", "TRANSFERRED", "DISCUSSION", "CONCLUSION", "SOLUTION", "CLOSED"].forEach((stage) => { %>
+            <option
+              value="<%= stage %>"
+              <%= currentTicket.stage === stage ? "selected" : "" %>
+            >
+              <%= stage %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Canal de abertura
+        <select name="channel">
+          <% ["PORTAL", "EMAIL", "PHONE", "WHATSAPP", "IN_PERSON", "API"].forEach((channel) => { %>
+            <option
+              value="<%= channel %>"
+              <%= currentTicket.channel === channel ? "selected" : "" %>
+            >
+              <%= channel %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Tipo de atendimento
+        <select name="support_type">
+          <% ["SUPPORT", "TECHNICAL_ASSISTANCE", "INCIDENT", "REQUEST"].forEach((supportType) => { %>
+            <option
+              value="<%= supportType %>"
+              <%= currentTicket.support_type === supportType ? "selected" : "" %>
+            >
+              <%= supportType %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        E-mail do solicitante
+        <input
+          type="email"
+          name="requester_email"
+          value="<%= currentTicket.requester_email || '' %>"
+        >
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit">Salvar dados</button>
+    </div>
+  </form>
+</section>
+
+<div class="crm-ticket-tabs" data-crm-tabs>
+  <div class="crm-tab-list" role="tablist" aria-label="Detalhes do atendimento">
+    <button id="crmTabMessages" class="crm-tab-button active" type="button" role="tab" aria-selected="true" aria-controls="crmPanelMessages" data-tab-target="messages">
+      Mensagens <span class="crm-tab-counter"><%= messageInteractions.length %></span>
+    </button>
+
+    <button id="crmTabTransfer" class="crm-tab-button" type="button" role="tab" aria-selected="false" aria-controls="crmPanelTransfer" data-tab-target="transfer">
+      Repasse <span class="crm-tab-counter"><%= ticketAssignments.length %></span>
+    </button>
+
+    <button id="crmTabDiscussion" class="crm-tab-button" type="button" role="tab" aria-selected="false" aria-controls="crmPanelDiscussion" data-tab-target="discussion">
+      Discussão <span class="crm-tab-counter"><%= discussionInteractions.length %></span>
+    </button>
+
+    <button id="crmTabConclusion" class="crm-tab-button" type="button" role="tab" aria-selected="false" aria-controls="crmPanelConclusion" data-tab-target="conclusion">
+      Conclusão <span class="crm-tab-counter"><%= conclusionInteractions.length %></span>
+    </button>
+
+    <button id="crmTabSolution" class="crm-tab-button" type="button" role="tab" aria-selected="false" aria-controls="crmPanelSolution" data-tab-target="solution">
+      Solução <span class="crm-tab-counter"><%= solutionInteractions.length %></span>
+    </button>
+  </div>
+
+  <section id="crmPanelMessages" class="crm-tab-panel active" role="tabpanel" aria-labelledby="crmTabMessages" data-tab-panel="messages">
+    <h2>Mensagens</h2>
+
+    <div class="crm-timeline">
+      <% messageInteractions.forEach((interaction) => { %>
+        <article class="crm-timeline-item <%= interaction.visibility === 'INTERNAL' ? 'internal' : 'public' %>">
+          <div class="crm-timeline-marker"><%= interaction.visibility === "INTERNAL" ? "I" : "M" %></div>
+          <div class="crm-timeline-content">
+            <div class="crm-timeline-heading">
+              <strong><%= interaction.created_by_name || interaction.source || "Sistema" %></strong>
+              <time><%= formatDateTime(interaction.created_at) %></time>
+            </div>
+            <div class="crm-message-text"><%= interaction.message %></div>
+            <small><%= interaction.visibility === "INTERNAL" ? "Interna" : "Pública" %> · <%= interaction.source || "PORTAL" %></small>
+          </div>
+        </article>
+      <% }) %>
+
+      <% if (!messageInteractions.length) { %>
+        <div class="empty-state">Nenhuma mensagem registrada.</div>
+      <% } %>
+    </div>
+
+    <form class="form crm-tab-form" method="post" action="/technical-crm/tickets/<%= currentTicket.id %>/interactions">
+      <input type="hidden" name="type" value="MESSAGE">
+      <div class="form-grid">
+        <label>
+          Visibilidade
+          <select name="visibility">
+            <option value="PUBLIC">Pública, visível ao solicitante</option>
+            <option value="INTERNAL">Interna, somente equipe técnica</option>
+          </select>
+        </label>
+        <label class="span-2">
+          Mensagem
+          <textarea name="message" rows="5" required></textarea>
+        </label>
+      </div>
+      <button type="submit">Adicionar mensagem</button>
+    </form>
+  </section>
+
+  <section id="crmPanelTransfer" class="crm-tab-panel" role="tabpanel" aria-labelledby="crmTabTransfer" data-tab-panel="transfer" hidden>
+    <h2>Repasse do atendimento</h2>
+
+    <form class="form" method="post" action="/technical-crm/tickets/<%= currentTicket.id %>/transfer">
+      <div class="form-grid">
+        <label>
+          Novo grupo
+          <select name="to_group_id" required>
+            <option value="">Selecione</option>
+            <% availableGroups.forEach((group) => { %>
+              <option value="<%= group.id %>"><%= group.name %><%= group.roulette_enabled ? " · roleta" : "" %></option>
+            <% }) %>
+          </select>
+        </label>
+
+        <label>
+          Responsável específico
+          <select name="to_user_id">
+            <option value="">Usar roleta ou deixar no grupo</option>
+            <% availableUsers.forEach((technicalUser) => { %>
+              <option value="<%= technicalUser.id %>"><%= technicalUser.name %></option>
+            <% }) %>
+          </select>
+        </label>
+
+        <label class="span-2">
+          Mensagem de repasse
+          <textarea name="reason" rows="5" required></textarea>
+        </label>
+      </div>
+      <button type="submit">Repassar atendimento</button>
+    </form>
+
+    <h3>Histórico de repasses</h3>
+    <% ticketAssignments.forEach((assignment) => { %>
+      <article class="crm-history-item">
+        <div class="crm-history-icon">⇄</div>
+        <div>
+          <strong><%= assignment.previous_group_name || "Triagem" %> → <%= assignment.new_group_name || "Sem grupo" %></strong>
+          <p>Responsável: <%= assignment.new_user_name || "Roleta ou grupo" %></p>
+          <% if (assignment.reason) { %><p><%= assignment.reason %></p><% } %>
+          <small><%= formatDateTime(assignment.created_at) %> · <%= assignment.assignment_method || "MANUAL" %></small>
+        </div>
+      </article>
+    <% }) %>
+
+    <% if (!ticketAssignments.length) { %>
+      <div class="empty-state">O atendimento ainda não foi repassado.</div>
+    <% } %>
+  </section>
+
+  <% const textPanels = [
+    { key: "discussion", id: "Discussion", type: "DISCUSSION", title: "Discussão", records: discussionInteractions },
+    { key: "conclusion", id: "Conclusion", type: "CONCLUSION", title: "Conclusão", records: conclusionInteractions },
+    { key: "solution", id: "Solution", type: "SOLUTION", title: "Solução", records: solutionInteractions }
+  ]; %>
+
+  <% textPanels.forEach((panel) => { %>
+    <section id="crmPanel<%= panel.id %>" class="crm-tab-panel" role="tabpanel" aria-labelledby="crmTab<%= panel.id %>" data-tab-panel="<%= panel.key %>" hidden>
+      <h2><%= panel.title %></h2>
+
+      <div class="crm-timeline">
+        <% panel.records.forEach((interaction) => { %>
+          <article class="crm-timeline-item">
+            <div class="crm-timeline-marker"><%= panel.title.charAt(0) %></div>
+            <div class="crm-timeline-content">
+              <div class="crm-timeline-heading">
+                <strong><%= interaction.created_by_name || interaction.source || "Sistema" %></strong>
+                <time><%= formatDateTime(interaction.created_at) %></time>
+              </div>
+              <div class="crm-message-text"><%= interaction.message %></div>
+            </div>
+          </article>
+        <% }) %>
+
+        <% if (!panel.records.length) { %>
+          <div class="empty-state">Nenhum registro nesta aba.</div>
+        <% } %>
+      </div>
+
+      <form class="form crm-tab-form" method="post" action="/technical-crm/tickets/<%= currentTicket.id %>/interactions">
+        <input type="hidden" name="type" value="<%= panel.type %>">
+        <input type="hidden" name="visibility" value="PUBLIC">
+        <label>
+          <%= panel.title %>
+          <textarea name="message" rows="6" required></textarea>
+        </label>
+        <button type="submit">Registrar <%= panel.title.toLowerCase() %></button>
+      </form>
+    </section>
+  <% }) %>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const container = document.querySelector("[data-crm-tabs]");
+
+    if (!container) {
+      return;
+    }
+
+    const buttons = Array.from(container.querySelectorAll("[data-tab-target]"));
+    const panels = Array.from(container.querySelectorAll("[data-tab-panel]"));
+
+    function activateTab(tabName, updateHash) {
+      const selectedButton = buttons.find((button) => button.dataset.tabTarget === tabName);
+      const selectedPanel = panels.find((panel) => panel.dataset.tabPanel === tabName);
+
+      if (!selectedButton || !selectedPanel) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        const active = button === selectedButton;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-selected", String(active));
+      });
+
+      panels.forEach((panel) => {
+        const active = panel === selectedPanel;
+        panel.classList.toggle("active", active);
+        panel.hidden = !active;
+      });
+
+      if (updateHash) {
+        window.history.replaceState(null, "", "#" + tabName);
+      }
+    }
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", function () {
+        activateTab(button.dataset.tabTarget, true);
+      });
+    });
+
+    const requestedTab = window.location.hash.replace("#", "").toLowerCase();
+    const initialTab = buttons.some((button) => button.dataset.tabTarget === requestedTab)
+      ? requestedTab
+      : "messages";
+
+    activateTab(initialTab, false);
+  });
+</script>
+
+<%- include('../partials/foot') %>

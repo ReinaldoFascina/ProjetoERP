@@ -1,0 +1,72 @@
+<%- include('partials/head') %>
+<header>
+    <div>
+        <h1>Chamados</h1>
+        <p>Abertura, atribuição e acompanhamento</p>
+    </div>
+    <a class="button" href="/tickets/new">+ Novo chamado</a>
+</header>
+<form class="card filters" method="get">
+    <label>De
+        <input type="date" name="date_from" value="<%= filters.date_from %>">
+    </label>
+    <label>Até
+        <input type="date" name="date_to" value="<%= filters.date_to %>">
+    </label>
+    <label>Status
+        <select name="status">
+            <option value="">Todos</option>
+            <% ['ABERTO','EM_ATENDIMENTO','AGUARDANDO_CLIENTE','RESOLVIDO','FECHADO','CANCELADO'].forEach(x=>{ %>
+                <option value="<%= x %>" <%= filters.status===x?'selected':'' %>><%= x %></option>
+            <% }) %>
+        </select>
+    </label>
+    <label>Cliente
+        <select name="client_id">
+            <option value="">Todos</option>
+            <% clients.forEach(c=>{ %>
+                <option value="<%= c.id %>" <%= String(filters.client_id)===String(c.id)?'selected':'' %>><%= c.corporate_name %></option>
+            <% }) %>
+        </select>
+    </label>
+    <div class="filter-actions">
+        <button>Filtrar</button>
+        <a class="small-button secondary" href="/tickets">Limpar</a>
+    </div>
+</form>
+<section class="card">
+    <div class="table">
+        <table>
+            <tr>
+                <th>Número</th>
+                <th>Título</th>
+                <th>Cliente</th>
+                <th>Técnico</th>
+                <th>Prioridade</th>
+                <th>Status</th>
+                <th>Ação</th>
+            </tr>
+            <% tickets.forEach(t=>{ %>
+                <tr>
+                    <td><%= t.number %></td>
+                    <td><%= t.title %></td>
+                    <td><%= t.corporate_name %></td>
+                    <td><%= t.technician||'Não atribuído' %></td>
+                    <td><%= t.priority %></td>
+                    <td><span class="pill"><%= t.status %></span></td>
+                    <td>
+                        <a class="small-button" href="/tickets/<%= t.id %>/edit">Editar</a>
+
+                    </td>
+
+                </tr>
+
+            <% }) %>
+
+        </table>
+
+    </div>
+
+</section>
+
+<%- include('partials/foot') %>
